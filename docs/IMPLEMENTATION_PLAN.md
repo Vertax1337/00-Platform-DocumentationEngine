@@ -196,6 +196,20 @@ Produktive Kundendiagramme müssen deterministisch aus validierten Daten und ein
 
 Auslöser dieser Entscheidung war ein Prototyp, der optisch plausible, aber im Kunden-Iststand nicht vorhandene Azure-Dienste wie Firewall/Bastion ergänzte.
 
+### DE-DEC-014 – Providergrenze des Azure Relationship Contracts
+
+**Status:** BESCHLOSSEN
+
+Der `AzureInfrastructureCollector` verwendet derzeit in P3, P4, P5 und P6 teilweise fachmodulspezifische Relationship-Arrays. Die im Collector-Umsetzungsplan als P9 vorgesehene `Relationship Engine` vereinheitlicht diese Strukturen zu einem kanonischen Azure-seitigen Relationship-Schema.
+
+Die `DocumentationEngine` darf ihren providerunabhängigen Diagramm- und Relationship-Bedarf sowie ihr internes providerübergreifendes Modell bereits vor Abschluss von P9 spezifizieren.
+
+Der produktive Azure→DocumentationEngine-Relationship-Contract wird jedoch erst auf Basis des vereinheitlichten P9-Schemas finalisiert. Bis dahin gelten die vorhandenen Azure-Relationship-Arrays als gesichteter, aber vorläufiger Input.
+
+P9 definiert ausschließlich den kanonischen Azure-seitigen Input. P9 definiert weder das globale providerübergreifende Modell noch die interne Relationship-Semantik der `DocumentationEngine`. Ein Azure-Provider-Adapter bildet das spätere P9-Schema kontrolliert auf das globale Engine-Modell ab.
+
+Referenz: [`AzureInfrastructureCollector / Umsetzungsplan.md`](https://github.com/Vertax1337/AzureInfrastructureCollector/blob/main/Umsetzungsplan.md).
+
 ---
 
 ## 4. Externe Abhängigkeiten und Schnittstellen
@@ -252,7 +266,7 @@ Gemeinsame Funktionalität wird nur dann ausgelagert, wenn tatsächliche Wiederv
 
 ### 4.5 AzureInfrastructureCollector
 
-**Status:** LOGISCHE SCHNITTSTELLE BESCHLOSSEN / aktueller Output gesichtet / finaler technischer Contract OFFEN
+**Status:** LOGISCHE SCHNITTSTELLE BESCHLOSSEN / aktueller Output gesichtet / Azure-Relationship-Contract abhängig von P9
 
 Erwarteter Input:
 
@@ -281,6 +295,21 @@ readOnlyVerification.json
 ```
 
 Diese Struktur ist als aktueller Iststand dokumentiert, aber noch nicht automatisch der finale Engine-Contract.
+
+#### Abhängigkeit zur P9 Relationship Engine
+
+**Status:** BESCHLOSSENE CONTRACT-GRENZE / P9 IM COLLECTOR NOCH OFFEN
+
+Die heutigen fachmodulspezifischen Relationship-Arrays können zur Anforderungsanalyse und für nichtproduktive Prototypen ausgewertet werden. Sie werden nicht als finaler produktiver Azure-Relationship-Contract festgeschrieben.
+
+Die DocumentationEngine spezifiziert unabhängig davon bereits:
+
+- welche providerübergreifenden Node-/Relationship-Semantiken benötigt werden,
+- welche Evidenz-, Status- und Coverage-Informationen erhalten bleiben müssen,
+- welche Anforderungen Diagram View Models und Validierungen an Beziehungen stellen,
+- wie Provider-Adapter an das globale Modell anbinden.
+
+Nach Stabilisierung von P9 wird das kanonische Azure-Schema geprüft, versioniert und über einen Azure-Provider-Adapter auf das globale Engine-Modell abgebildet.
 
 Noch offen:
 
@@ -336,6 +365,8 @@ Zu entscheiden:
 - Versionierung,
 - mehrere Collector-Artefakte vs. aggregierter Input,
 - Umgang mit optionalen Datenquellen.
+
+Für den Azure-Teil gilt zusätzlich DE-DEC-014: Providerunabhängige Anforderungen dürfen bereits spezifiziert werden; die produktive Azure-Relationship-Ausprägung dieses Contracts wird erst nach Stabilisierung des P9-Schemas finalisiert.
 
 ### DE-OPEN-002 – Internes Modell
 
@@ -496,6 +527,10 @@ Die Reihenfolge ist so gewählt, dass keine Technologieentscheidung getroffen wi
 **Ziel:** Stabile Eingangs- und Integrationsschnittstellen definieren.
 
 - [x] aktuellen Output des `AzureInfrastructureCollector` fachlich/strukturell gegen den geplanten Engine-Input abgeglichen; finaler Contract bleibt offen.
+- [x] Contract-Grenze dokumentiert: P9 vereinheitlicht den Azure-seitigen Input, definiert aber nicht das globale Engine-Modell.
+- [ ] providerunabhängigen Diagramm- und Relationship-Bedarf der DocumentationEngine spezifizieren.
+- [ ] nach Abschluss von Collector-P9 das vereinheitlichte Azure-Relationship-Schema prüfen und versionieren.
+- [ ] produktiven Azure→DocumentationEngine-Relationship-Contract und Azure-Provider-Adapter auf Basis von P9 finalisieren.
 - [ ] aktuellen Output von `OPNsenseDocumentation` gegen den geplanten Engine-Input abgleichen.
 - [ ] gemeinsames Input-Contract festlegen.
 - [ ] Schema-Versionierungsstrategie festlegen.
@@ -503,18 +538,19 @@ Die Reihenfolge ist so gewählt, dass keine Technologieentscheidung getroffen wi
 - [ ] Aufruf-/Artefaktvertrag mit `PipelineTemplates` festlegen.
 - [ ] erforderliche Kundenmetadaten aus `CUST-*` festlegen.
 
-**Decision Gate:** Erst danach konkretes internes Modell und Rendering-Technologien festlegen.
+**Decision Gate:** Das providerunabhängige interne Modell und die Diagrammanforderungen dürfen vor Abschluss von Collector-P9 festgelegt werden. Der produktive Azure-Provider-Adapter und der Azure-Relationship-Contract dürfen erst nach Stabilisierung und Prüfung des P9-Schemas finalisiert werden.
 
 ### Phase 2 – Internes Modell und Core Engine
 
 **Ziel:** Normalisierte Eingaben deterministisch in ein internes Dokumentationsmodell überführen.
 
-- [ ] konkretes Infrastructure-/Relationship-Modell definieren.
+- [ ] providerunabhängiges Infrastructure-/Relationship-Modell definieren; P9 ist dafür kein Blocker.
 - [ ] Document View Model definieren.
 - [ ] Semantic View Builder definieren und implementieren.
 - [ ] Diagram View Model definieren.
 - [ ] Modellvalidierung implementieren.
 - [ ] Collector-Inputs in internes Modell transformieren.
+- [ ] Azure-Provider-Adapter gegen das nach P9 vereinheitlichte Azure-Relationship-Schema implementieren.
 - [ ] deterministische Sortierung und Referenzauflösung implementieren.
 - [ ] Coverage-/fehlende-Daten-Modell implementieren.
 - [ ] Fehler- und Loggingmodell implementieren.
@@ -636,6 +672,7 @@ PDF, DOCX und die endgültige Knowledge-Base-/Publishing-Lösung sind keine Vora
 | DE-DEC-011 | Zielgruppe | BESCHLOSSEN | Technikerorientierung vor maschinennahem Inventar |
 | DE-DEC-012 | View-Schicht | BESCHLOSSEN | Relationship Graph -> Semantic View Builder -> View Models -> Renderer |
 | DE-DEC-013 | Generative Bilder | BESCHLOSSEN | keine technische Diagramm-Source-of-Truth |
+| DE-DEC-014 | Azure Relationship Contract | BESCHLOSSEN | globales Engine-Modell unabhängig spezifizierbar; produktiver Azure-Contract erst auf Basis von Collector-P9 |
 | DE-OPEN-001 | Input-Contract | OFFEN | – |
 | DE-OPEN-002 | Konkretes internes Modell | OFFEN | – |
 | DE-OPEN-003 | Template Engine | OFFEN | – |
@@ -650,6 +687,14 @@ PDF, DOCX und die endgültige Knowledge-Base-/Publishing-Lösung sind keine Vora
 ---
 
 ## 9. Änderungsprotokoll
+
+### 2026-08-13 – Abhängigkeit zum Azure-P9-Relationship-Schema abgegrenzt
+
+- bestehende fachmodulspezifische Azure-Relationship-Arrays als vorläufigen Input eingeordnet,
+- Collector-P9 als Quelle des späteren kanonischen Azure-seitigen Relationship-Schemas festgehalten,
+- klargestellt, dass P9 nicht das globale providerübergreifende Modell der DocumentationEngine definiert,
+- Spezifikation des providerunabhängigen Engine-Modells vor P9 ausdrücklich ermöglicht,
+- Finalisierung des produktiven Azure-Relationship-Contracts und Azure-Provider-Adapters an das stabilisierte P9-Schema gebunden.
 
 ### 2026-08-13 – Organisatorische Zuordnung klargestellt
 
