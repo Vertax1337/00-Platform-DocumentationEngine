@@ -65,7 +65,11 @@ DocumentationEngine
    +----------------> Texte / Tabellen / Netzwerkdiagramme
 ```
 
-Damit gilt insbesondere: Collector sollen nicht jeweils ihre eigene vollständige Kundendokumentationslogik implementieren.
+Damit gilt insbesondere:
+
+- Collector sollen nicht jeweils ihre eigene vollständige Kundendokumentationslogik implementieren.
+- Die DocumentationEngine soll die jeweilige Infrastruktur nicht erneut live inventarisieren.
+- Für Azure werden die freigegebenen normalisierten Artefakte des `AzureInfrastructureCollector` konsumiert; ein paralleler Azure-Collector innerhalb der DocumentationEngine ist nicht vorgesehen.
 
 ### 1.3 Grundlegender Datenfluss
 
@@ -109,7 +113,7 @@ PDF und DOCX sind als spätere Ausgabeformate vorgesehen und dürfen die erste p
 
 ### 1.5 Diagramme und Hersteller-Icons
 
-Für Azure-Diagramme sollen die offiziellen **Microsoft Azure Architecture Icons** verwendet werden.
+Für Azure-Diagramme werden die offiziellen **Microsoft Azure Architecture Icons** verwendet.
 
 Offizielle Hersteller-Icons sollen nicht willkürlich verändert werden. Insbesondere sollen sie nicht:
 
@@ -120,7 +124,7 @@ Offizielle Hersteller-Icons sollen nicht willkürlich verändert werden. Insbeso
 
 werden.
 
-Ein vollständiger herstellerübergreifender Symbol-, Icon- und Layoutstandard ist noch nicht beschlossen.
+Aus den ersten Prototypen wurde ein fachlicher `DIAGRAM_ENGINE_STANDARD.md` abgeleitet. Die konkrete Renderer-, Layout- und Diagrammtechnologie ist weiterhin offen.
 
 ### 1.6 Reproduzierbarkeit und Qualität
 
@@ -129,11 +133,61 @@ Die `DocumentationEngine` muss langfristig:
 - reproduzierbare Builds liefern,
 - automatisiert testbar sein,
 - technische Quality Gates unterstützen,
-- Dokumentationsstandards versionierbar und wartbar machen.
+- Dokumentationsstandards versionierbar und wartbar machen,
+- Diagramme deterministisch aus validierten Fakten erzeugen.
+
+### 1.7 Faktentreue / No-Invention
+
+Ein Infrastruktur- oder Serviceelement darf nur als Bestandteil des Kunden-Iststands dargestellt werden, wenn es durch einen freigegebenen Input belegt ist.
+
+Microsoft- bzw. Hersteller-Referenzarchitekturen dienen ausschließlich als Kommunikations-, Layout- oder Stilreferenz. Sie sind keine Quelle für fehlende Kundenressourcen.
+
+Ein Prototyp erzeugte optisch plausible, aber tatsächlich nicht vorhandene Komponenten wie Azure Firewall/Bastion. Daraus wurde eine harte Projektregel abgeleitet:
+
+> Fehlende Infrastruktur wird niemals durch typische Referenzarchitektur ergänzt.
+
+Generative Bildmodelle dürfen deshalb nur für Stilfindung/Mockups eingesetzt werden und nicht als technische Diagramm-Source-of-Truth.
+
+### 1.8 Technikerorientierung und semantische Views
+
+Primäre Zielgruppe sind Techniker und Administratoren.
+
+Die Dokumentation priorisiert daher:
+
+- Orientierung,
+- Workloads,
+- Architektur,
+- betriebliche Abhängigkeiten,
+- Protection,
+- Operations
+
+vor vollständigen Ressourceninventaren.
+
+Maschinennahe Detailtabellen bleiben erhalten, werden aber in spätere Kapitel bzw. Anhänge verschoben.
+
+Zwischen Collector-Input und Renderer ist folgende Abstraktionsschicht beschlossen:
+
+```text
+Collector Data
+   -> Relationship Graph
+   -> Semantic View Builder
+   -> Document / Diagram View Model
+   -> Renderer
+```
+
+Als aktueller Prototyprahmen wurden fünf Sichten konsolidiert:
+
+1. Azure-/Infrastruktur-Gesamtübersicht,
+2. Netzwerk & Connectivity,
+3. Workload & Deployment,
+4. Backup & Recovery,
+5. Security & Operations.
+
+Die konkrete technische Implementierung dieser Views bleibt offen.
 
 ## 2. Bereits implementiert
 
-Nach dem derzeit bekannten Stand sind vor allem Plattform- und Repository-Grundlagen vorhanden bzw. über den Bootstrap vorgesehen.
+Nach dem derzeit bekannten Stand sind vor allem Plattform-/Repository-Grundlagen und die konsolidierte Architektur-/Prototypdokumentation vorhanden.
 
 | Bereich | Stand |
 |---|---|
@@ -143,13 +197,18 @@ Nach dem derzeit bekannten Stand sind vor allem Plattform- und Repository-Grundl
 | `PipelineTemplates` Repository | strukturell vorgesehen bzw. angelegt |
 | `SecurityValidation` Repository | strukturell vorgesehen bzw. angelegt |
 | `SharedModules` Repository | strukturell vorgesehen bzw. angelegt |
-| `AzureInfrastructureCollector` | als zentrales Collector-Repository vorgesehen bzw. angelegt |
-| `OPNsenseDocumentation` | als zentrales Collector-/Dokumentationsvorstufen-Repository vorgesehen bzw. angelegt |
+| `AzureInfrastructureCollector` | zentrales Collector-Repository; realer modularer Output liegt vor |
+| `OPNsenseDocumentation` | zentrales Collector-/Dokumentationsvorstufen-Repository vorgesehen bzw. angelegt |
 | `CUST-*` Provisionierungsmodell | im Bootstrap vorgesehen |
+| Kanonischer DocumentationEngine-Umsetzungsplan | implementiert |
+| Collector-/Engine-Verantwortungsdokument | implementiert |
+| Techniker-Dokumentationsstandard (Prototyp) | implementiert |
+| Diagram Engine Standard (Prototyp) | implementiert |
+| Prototyp-Erkenntnis-/Fehlerdokument | implementiert |
 | Eigentliche fachliche `DocumentationEngine` | **noch nicht implementiert** |
 | Produktiver End-to-End-Dokumentationsbuild | **noch nicht implementiert** |
 
-Dieses GitHub-Repository enthält ab jetzt den konsolidierten Ausgangsstand und den kanonischen Umsetzungsplan. Der aktuelle GitHub-Repositoryname `10-DocumentationEngine` ändert die beschlossene logische Zielzuordnung `00-Platform / DocumentationEngine` nicht.
+Der aktuelle GitHub-Repositoryname `10-DocumentationEngine` ändert die beschlossene logische Zielzuordnung `00-Platform / DocumentationEngine` nicht.
 
 ## 3. Anforderungen und Schnittstellen aus angrenzenden Teilprojekten
 
@@ -223,12 +282,34 @@ Noch offen ist, welche konkreten Funktionen der `DocumentationEngine` dort liege
 
 Der Collector liefert normalisierte strukturierte Azure-Infrastrukturdaten als Input für die Engine.
 
-Als bisheriger Arbeitsbegriff wurde unter anderem `inventory.json` verwendet. Noch nicht abschließend entschieden ist, ob der technische Input später aus einer einzelnen Datei, mehreren modularen Dateien oder einem anderen definierten Artefaktpaket besteht.
+Der aktuelle real validierte Collector arbeitet bereits modular. Bekannte Fachartefakte sind:
+
+```text
+Inventory/
+|- resourceGroups.json
+|- resources.json
+|- network.json
+|- compute.json
+|- avd.json
+|- storage.json
+|- backup.json
+`- keyVault.json
+
+summary.json
+manifest.json
+readOnlyVerification.json
+```
 
 Damit ist fest:
 
 - der logische Input sind normalisierte Azure-Daten,
-- der konkrete technische Input-Contract ist noch offen.
+- die DocumentationEngine soll Azure nicht erneut inventarisieren,
+- explizite Resource IDs und Relationships sind die bevorzugte Faktenbasis für Dokumentation und Diagramme,
+- der aktuelle Collector-Output ist als Iststand bekannt.
+
+Noch nicht abschließend entschieden ist, ob die technische Engine-Schnittstelle dieses Paket direkt übernimmt oder ein eigenes versioniertes Exchange-Schema erhält.
+
+Details: `COLLECTOR_INTERFACE.md`.
 
 ### 3.6 OPNsenseDocumentation
 
@@ -293,10 +374,14 @@ Vorgesehene Bereiche sind insbesondere:
 
 ### 4.2 Interne Modelle
 
-- internes Dokumentmodell,
-- internes Infrastrukturmodell,
-- internes Netzwerkmodell,
-- Verhältnis Collector-Modell ↔ Dokumentmodell,
+Beschlossen ist die Abstraktionsfolge `Relationship Graph -> Semantic View Builder -> View Models -> Renderer`.
+
+Noch offen sind:
+
+- konkretes Document View Model,
+- konkretes Infrastructure-/Relationship-Modell,
+- konkretes Diagram View Model,
+- technische Modellrepräsentation,
 - Versionierung der internen Modelle.
 
 ### 4.3 Template und Rendering
@@ -306,24 +391,37 @@ Vorgesehene Bereiche sind insbesondere:
 - Renderer,
 - Markdown-Erzeugung,
 - Conditional Sections,
-- Verhalten bei optionalen oder fehlenden Daten,
+- technische Umsetzung der Regeln bei optionalen oder fehlenden Daten,
 - Tabellenstandard.
+
+Die technikerorientierte Zielstruktur ist bereits in `TECHNICIAN_DOCUMENTATION_STANDARD.md` konsolidiert.
 
 ### 4.4 Diagramme
 
+Bereits als Prototypstandard dokumentiert:
+
+- offizielle Azure Architecture Icons,
+- Faktentreue / nur belegte Nodes und Kanten,
+- Progressive Disclosure,
+- semantische Layoutzonen,
+- Legenden,
+- fünf Standard-Views,
+- Workload-orientierte Gruppierung,
+- Backup-Sicht aus Perspektive der geschützten Ressource,
+- Coverage statt Erfindung bei fehlenden Security-/Operations-Daten.
+
+Weiterhin offen:
+
 - Diagrammformat,
 - Diagrammrenderer,
-- internes Diagrammmodell,
-- Layoutverfahren,
-- herstellerübergreifender Symbolstandard,
-- Positionierungs- und Abstandsregeln,
-- Linien-/Kantenstandard,
+- konkretes Diagram View Model,
+- konkrete Layoutbibliothek,
+- exakte Positionierungs- und Abstandsregeln,
+- Linien-/Kantenrouting,
 - Port-/Interface-Darstellung,
-- VLAN-Darstellung,
-- Netzwerksegment-Darstellung,
-- Legendenstandard,
-- Architektur- und Infrastrukturdiagrammstandards,
-- Diagrammvalidierung.
+- VLAN-/Segment-Darstellung,
+- herstellerübergreifender Symbolstandard,
+- technische Diagrammvalidierung.
 
 ### 4.5 Integration
 
@@ -346,6 +444,7 @@ Vorgesehene Bereiche sind insbesondere:
 - Dokumenttests,
 - deterministische Ausgabe,
 - reproduzierbarer Build,
+- Faktentreue-/No-Invention-Regressionstests,
 - Quality-Gate-Regeln.
 
 ## 5. OPEN – Knowledge Base / Publishing
