@@ -39,13 +39,32 @@ Initiales Ausgabeformat ist Markdown.
 
 ## 3. Bereits beschlossene Architekturgrenzen
 
-### DE-DEC-001 – Zentrale Plattformkomponente
+### DE-DEC-001 – Verbindliche organisatorische Zuordnung
 
 **Status:** BESCHLOSSEN
 
-Die `DocumentationEngine` ist zentrale Plattformlogik im Azure-DevOps-Projekt `00-Platform`.
+Die organisatorische Zielzuordnung ist bereits im zentralen [`DEV_Ops_Bootstrap`-Umsetzungsplan](https://github.com/Vertax1337/DEV_Ops_Bootstrap/blob/main/docs/Umsetzungsplan.md) beschlossen und wird in diesem Unterprojekt nicht erneut als offene Architekturentscheidung geführt.
 
-Sie wird nicht pro Kunde und nicht pro Collector dupliziert.
+```text
+00-Platform
+├── PlatformBootstrap
+├── PipelineTemplates
+├── DocumentationEngine
+├── SecurityValidation
+└── SharedModules
+
+10-Automation
+├── AzureInfrastructureCollector
+└── OPNsenseDocumentation
+```
+
+Die `DocumentationEngine` ist zentrale Plattformlogik im Azure-DevOps-Projekt `00-Platform`. Sie verarbeitet normalisierte Collector-Daten providerübergreifend und erzeugt daraus die Kundendokumentation.
+
+`AzureInfrastructureCollector` und `OPNsenseDocumentation` sind quellspezifische Automationskomponenten im Azure-DevOps-Projekt `10-Automation`. Sie erfassen und normalisieren ihre jeweiligen Quelldaten, enthalten aber keine eigene vollständige Kundendokumentationsengine.
+
+Die Bezeichnung des aktuellen GitHub-Arbeitsrepositories `Vertax1337/10-DocumentationEngine` ändert diese beschlossene Azure-DevOps-Zuordnung nicht und öffnet sie nicht erneut.
+
+Die `DocumentationEngine` wird nicht pro Kunde und nicht pro Collector dupliziert.
 
 ### DE-DEC-002 – Repository-Provisionierung
 
@@ -470,7 +489,7 @@ Die Reihenfolge ist so gewählt, dass keine Technologieentscheidung getroffen wi
 - [x] Collector-/DocumentationEngine-Verantwortungsgrenze separat dokumentieren.
 - [x] Techniker-Dokumentationsstandard als Prototyprahmen dokumentieren.
 - [x] Diagram Engine Standard als Prototyprahmen dokumentieren.
-- [ ] Repository-Namens-/Zielzuordnung beim späteren Azure-DevOps-Transfer prüfen, da das aktuelle GitHub-Repository `10-DocumentationEngine` heißt, die beschlossene logische Zielposition jedoch `00-Platform / DocumentationEngine` ist.
+- [x] verbindliche organisatorische Zielzuordnung aus `DEV_Ops_Bootstrap` übernommen: `DocumentationEngine` unter `00-Platform`; `AzureInfrastructureCollector` und `OPNsenseDocumentation` unter `10-Automation`. Der Name des aktuellen GitHub-Arbeitsrepositories ändert diese Zuordnung nicht.
 
 ### Phase 1 – Contracts und Verantwortungsgrenzen
 
@@ -604,7 +623,7 @@ PDF, DOCX und die endgültige Knowledge-Base-/Publishing-Lösung sind keine Vora
 
 | ID | Thema | Status | Entscheidung |
 |---|---|---|---|
-| DE-DEC-001 | Zentrale Plattformkomponente | BESCHLOSSEN | `00-Platform / DocumentationEngine` |
+| DE-DEC-001 | Organisatorische Zuordnung | BESCHLOSSEN | `DocumentationEngine` unter `00-Platform`; Collector unter `10-Automation` |
 | DE-DEC-002 | Provisionierung | BESCHLOSSEN | DEVOPS-/Platform-Bootstrap |
 | DE-DEC-003 | Collector-Trennung | BESCHLOSSEN | Collector normalisieren; Engine dokumentiert und inventarisiert Quelle nicht erneut |
 | DE-DEC-004 | Validation | BESCHLOSSEN | Fail Closed; Detailgrenze noch offen |
@@ -631,6 +650,14 @@ PDF, DOCX und die endgültige Knowledge-Base-/Publishing-Lösung sind keine Vora
 ---
 
 ## 9. Änderungsprotokoll
+
+### 2026-08-13 – Organisatorische Zuordnung klargestellt
+
+- die bereits in `DEV_Ops_Bootstrap` beschlossene Projektzuordnung ausdrücklich übernommen,
+- `DocumentationEngine` verbindlich unter `00-Platform` dokumentiert,
+- `AzureInfrastructureCollector` und `OPNsenseDocumentation` verbindlich unter `10-Automation` dokumentiert,
+- den widersprüchlichen offenen Prüfpunkt zur Zielzuordnung in Phase 0 geschlossen,
+- klargestellt, dass der aktuelle GitHub-Repositoryname die Azure-DevOps-Zuordnung nicht ändert oder erneut öffnet.
 
 ### 2026-08-13 – Diagramm-/Technikerprototypen konsolidiert
 
