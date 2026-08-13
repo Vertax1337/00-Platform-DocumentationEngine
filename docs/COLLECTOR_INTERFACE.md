@@ -141,6 +141,28 @@ Protected Item -> ProtectsResource -> Azure Resource
 
 Diese Beziehungen eignen sich für deterministische Dokumentationsaussagen und Diagrammkanten.
 
+### 6.1 Abhängigkeit zur P9 Relationship Engine
+
+**Status:** BESCHLOSSENE CONTRACT-GRENZE / P9 IM COLLECTOR NOCH OFFEN
+
+P3, P4, P5 und P6 des `AzureInfrastructureCollector` verwenden derzeit teilweise fachmodulspezifische Relationship-Arrays. Diese Strukturen sind als aktuelle Faktenquelle und für die Anforderungsanalyse nutzbar, bilden aber noch nicht den finalen produktiven Azure→DocumentationEngine-Relationship-Contract.
+
+Die in P9 vorgesehene `Relationship Engine` vereinheitlicht die Azure-seitigen Relationships. Erst das stabilisierte und versionierte P9-Schema bildet die Grundlage für den produktiven Azure-Relationship-Contract und den Azure-Provider-Adapter.
+
+P9 definiert dabei ausschließlich den kanonischen Azure-seitigen Input. Das globale providerübergreifende Infrastructure-/Relationship-Modell, die Diagrammsemantik und die Anforderungen der DocumentationEngine werden zentral in der DocumentationEngine festgelegt.
+
+Damit gilt:
+
+```text
+fachmodulspezifische Azure-Relationships
+        -> Collector P9 Relationship Engine
+        -> kanonischer Azure-Relationship-Input
+        -> Azure-Provider-Adapter
+        -> globales DocumentationEngine-Modell
+```
+
+Die Spezifikation des globalen Engine-Modells ist kein P9-Blocker. Die produktive Finalisierung des Azure-Adapters ist dagegen von P9 abhängig.
+
 Die DocumentationEngine soll eine vorhandene Relationship nicht durch Namensheuristik ersetzen.
 
 ---
@@ -240,9 +262,20 @@ Vor Implementierung der Core Engine müssen mindestens festgelegt werden:
 - Pflichtmetadaten,
 - Snapshot-/Erfassungszeitpunkt,
 - IDs und Namespaces,
-- Relationship-Schema,
+- providerunabhängige Relationship-Anforderungen der DocumentationEngine,
+- nach P9: versioniertes kanonisches Azure-Relationship-Schema,
+- Mappingvertrag des Azure-Provider-Adapters auf das globale Engine-Modell,
 - Fehler-/Partial-Coverage-Modell,
 - Schema-/Security-Validation-Verantwortung,
 - Kompatibilitätsregeln bei unterschiedlichen Collector-Versionen.
 
 Diese Punkte gehören in Phase 1 des kanonischen `IMPLEMENTATION_PLAN.md`.
+
+Für Azure ist die Reihenfolge verbindlich:
+
+1. providerunabhängigen Diagramm- und Relationship-Bedarf in der DocumentationEngine spezifizieren,
+2. P9 im `AzureInfrastructureCollector` vereinheitlichen und stabilisieren,
+3. P9-Schema als kanonischen Azure-seitigen Input prüfen und versionieren,
+4. produktiven Azure-Provider-Adapter und Azure→DocumentationEngine-Relationship-Contract finalisieren.
+
+Referenz: [`AzureInfrastructureCollector / Umsetzungsplan.md`](https://github.com/Vertax1337/AzureInfrastructureCollector/blob/main/Umsetzungsplan.md).
