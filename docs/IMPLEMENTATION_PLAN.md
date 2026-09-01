@@ -1,6 +1,6 @@
 # DocumentationEngine – kanonischer Umsetzungsplan
 
-Stand: 2026-08-13
+Stand: 2026-09-01
 
 Dieses Dokument ist der kanonische technische Umsetzungsplan für `00-Platform / DocumentationEngine`.
 
@@ -210,6 +210,33 @@ P9 definiert ausschließlich den kanonischen Azure-seitigen Input. P9 definiert 
 
 Referenz: [`AzureInfrastructureCollector / Umsetzungsplan.md`](https://github.com/Vertax1337/AzureInfrastructureCollector/blob/main/Umsetzungsplan.md).
 
+### DE-DEC-015 – Providerunabhängiger Canonical Infrastructure Core
+
+**Status:** BESCHLOSSEN / technische Implementierung offen
+
+Der providerunabhängige Kern der `DocumentationEngine` besteht aus vier First-Class-Objekten:
+
+- `InfrastructureNode`,
+- `Relationship`,
+- `EvidenceReference`,
+- `CoverageRecord`.
+
+Verbindliche Regeln:
+
+- stabile technische IDs statt Anzeigenamen als Beziehungsgrundlage,
+- Provider-Typen und Provider-Relationship-Typen bleiben als Herkunftsinformation erhalten,
+- jeder Node und jede Relationship benötigt Evidence,
+- deterministische Ableitungen müssen maschinenauflösbar und als Ableitung gekennzeichnet sein,
+- reine Namensheuristiken und Referenzarchitektur-Annahmen sind unzulässig,
+- reale technische Scopes können als Nodes mit `contains`-Relationships abgebildet werden,
+- semantische Diagrammzonen und Workload-Gruppen gehören nicht in den Infrastructure Core, sondern in spätere View Models,
+- Coverage wird explizit mit den Zuständen `collected`, `partial`, `notCollected`, `notApplicable`, `unavailable` modelliert,
+- Renderer-/Layoutattribute sind im Canonical Core unzulässig.
+
+Die fachliche Spezifikation und das DE-WC-01-Gate sind in [`docs/architecture/CANONICAL_MODEL.md`](architecture/CANONICAL_MODEL.md) festgelegt.
+
+Die konkrete Programmiersprache und physische Serialisierung bleiben offen. Der produktive Azure-Adapter bleibt weiterhin durch DE-DEC-014 an das stabilisierte Collector-P9-Schema gebunden.
+
 ---
 
 ## 4. Externe Abhängigkeiten und Schnittstellen
@@ -370,15 +397,24 @@ Für den Azure-Teil gilt zusätzlich DE-DEC-014: Providerunabhängige Anforderun
 
 ### DE-OPEN-002 – Internes Modell
 
-Zu entscheiden:
+**Status:** TEILWEISE BESCHLOSSEN / Rest OFFEN
+
+Mit DE-DEC-015 und `docs/architecture/CANONICAL_MODEL.md` sind bereits beschlossen:
+
+- providerunabhängiges InfrastructureNode-Modell,
+- providerunabhängiges Relationship-Modell,
+- Evidence-/Provenance-Grundmodell,
+- Coverage-Grundmodell,
+- referentielle Integrität und Determinismus als Core-Invarianten,
+- Trennung Canonical Core ↔ Semantic Views ↔ Renderer.
+
+Weiter offen bleiben insbesondere:
 
 - konkretes Document View Model,
-- konkretes Infrastructure/Relationship Model,
 - konkretes Diagram View Model,
-- Referenzmodell zwischen Objekten,
-- Modellversionierung.
-
-Die Notwendigkeit einer semantischen View-Schicht ist mit DE-DEC-012 bereits beschlossen; offen ist deren konkrete technische Ausgestaltung.
+- konkrete technische Repräsentation/Serialisierung des Core-Modells,
+- Modellversionierung und Kompatibilitätsstrategie,
+- konkrete technische Implementierung des Semantic View Builders.
 
 ### DE-OPEN-003 – Template Engine
 
@@ -528,7 +564,7 @@ Die Reihenfolge ist so gewählt, dass keine Technologieentscheidung getroffen wi
 
 - [x] aktuellen Output des `AzureInfrastructureCollector` fachlich/strukturell gegen den geplanten Engine-Input abgeglichen; finaler Contract bleibt offen.
 - [x] Contract-Grenze dokumentiert: P9 vereinheitlicht den Azure-seitigen Input, definiert aber nicht das globale Engine-Modell.
-- [ ] providerunabhängigen Diagramm- und Relationship-Bedarf der DocumentationEngine spezifizieren.
+- [x] providerunabhängigen Diagramm- und Relationship-Bedarf der DocumentationEngine spezifiziert; Core-Anforderungen in `docs/architecture/CANONICAL_MODEL.md` festgelegt.
 - [ ] nach Abschluss von Collector-P9 das vereinheitlichte Azure-Relationship-Schema prüfen und versionieren.
 - [ ] produktiven Azure→DocumentationEngine-Relationship-Contract und Azure-Provider-Adapter auf Basis von P9 finalisieren.
 - [ ] aktuellen Output von `OPNsenseDocumentation` gegen den geplanten Engine-Input abgleichen.
@@ -544,7 +580,7 @@ Die Reihenfolge ist so gewählt, dass keine Technologieentscheidung getroffen wi
 
 **Ziel:** Normalisierte Eingaben deterministisch in ein internes Dokumentationsmodell überführen.
 
-- [ ] providerunabhängiges Infrastructure-/Relationship-Modell definieren; P9 ist dafür kein Blocker.
+- [x] providerunabhängiges Infrastructure-/Relationship-Core-Modell fachlich definiert (`docs/architecture/CANONICAL_MODEL.md`); technische Repräsentation und Implementierung folgen in DE-WC-01.
 - [ ] Document View Model definieren.
 - [ ] Semantic View Builder definieren und implementieren.
 - [ ] Diagram View Model definieren.
@@ -554,6 +590,49 @@ Die Reihenfolge ist so gewählt, dass keine Technologieentscheidung getroffen wi
 - [ ] deterministische Sortierung und Referenzauflösung implementieren.
 - [ ] Coverage-/fehlende-Daten-Modell implementieren.
 - [ ] Fehler- und Loggingmodell implementieren.
+
+#### DE-WC-01 – Canonical Infrastructure Core technisch implementieren
+
+**Status:** BESCHLOSSEN / IMPLEMENTIERUNG OFFEN
+
+**Fachlicher Contract:** `docs/architecture/CANONICAL_MODEL.md`
+
+Ziel des ersten Core-Workchunks ist die technische Repräsentation und Validierung der vier beschlossenen Kernobjekte:
+
+```text
+InfrastructureNode
+Relationship
+EvidenceReference
+CoverageRecord
+```
+
+Verbindlicher Implementierungsumfang:
+
+- technische Core-Repräsentation ohne Provider- oder Rendererabhängigkeit,
+- zentrale Registry der kanonischen Node- und Relationship-Klassen,
+- referentielle Integrität,
+- Evidence-Pflicht für Nodes und Relationships,
+- fail-closed Validierung nicht auflösbarer Referenzen,
+- deterministische Sortierung,
+- Coverage-Validierung,
+- positive und negative Contract-Fixtures,
+- No-Invention-/Evidence-Regressionstest,
+- Providerunabhängigkeitsnachweis mit mindestens zwei Provider-Namensräumen.
+
+Nicht Bestandteil von DE-WC-01:
+
+- produktiver Azure-P9-Adapter,
+- OPNsense-Adapter,
+- Bicep-/Desired-State-Adapter,
+- Semantic View Builder,
+- Document View Model,
+- Diagram View Model,
+- Renderer/Layoutbibliothek,
+- Icon-Integration,
+- Markdown-/PDF-/DOCX-Rendering,
+- PipelineTemplates-Integration.
+
+**Hartes Gate:** DE-WC-01 erhält erst `IMPLEMENTIERT`, wenn Core-Modell, Fachdokumentation und kanonischer Umsetzungsplan denselben bestätigten Status tragen und alle im Canonical-Model-Dokument definierten Contract-/Fail-Closed-/Determinismus-/No-Invention-Tests erfolgreich sind.
 
 ### Phase 3 – Markdown-Rendering
 
@@ -673,8 +752,9 @@ PDF, DOCX und die endgültige Knowledge-Base-/Publishing-Lösung sind keine Vora
 | DE-DEC-012 | View-Schicht | BESCHLOSSEN | Relationship Graph -> Semantic View Builder -> View Models -> Renderer |
 | DE-DEC-013 | Generative Bilder | BESCHLOSSEN | keine technische Diagramm-Source-of-Truth |
 | DE-DEC-014 | Azure Relationship Contract | BESCHLOSSEN | globales Engine-Modell unabhängig spezifizierbar; produktiver Azure-Contract erst auf Basis von Collector-P9 |
+| DE-DEC-015 | Canonical Infrastructure Core | BESCHLOSSEN | providerunabhängige Nodes, Relationships, Evidence und Coverage als Core-Contract; Renderer-/Providerlogik getrennt |
 | DE-OPEN-001 | Input-Contract | OFFEN | – |
-| DE-OPEN-002 | Konkretes internes Modell | OFFEN | – |
+| DE-OPEN-002 | Konkretes internes Modell | TEILWEISE OFFEN | Canonical Infrastructure Core beschlossen; Document/Diagram View Models, technische Repräsentation und Versionierung noch offen |
 | DE-OPEN-003 | Template Engine | OFFEN | – |
 | DE-OPEN-004 | Markdown-Renderer | OFFEN | – |
 | DE-OPEN-005 | Diagrammformat/Renderer | OFFEN | – |
@@ -687,6 +767,19 @@ PDF, DOCX und die endgültige Knowledge-Base-/Publishing-Lösung sind keine Vora
 ---
 
 ## 9. Änderungsprotokoll
+
+### 2026-09-01 – DE-WC-01 / Canonical Infrastructure Core beschlossen
+
+- providerunabhängigen Diagramm- und Relationship-Bedarf konkretisiert,
+- `InfrastructureNode`, `Relationship`, `EvidenceReference` und `CoverageRecord` als Core-Objekte beschlossen,
+- Evidence-/No-Invention-Regel als technische Core-Invariante festgelegt,
+- initiale providerunabhängige Node- und Relationship-Semantik beschrieben,
+- Coverage-Zustände und referentielle Integrität festgelegt,
+- technische Scopes von semantischen View-/Diagrammzonen getrennt,
+- Renderer-/Layoutattribute aus dem Canonical Core ausgeschlossen,
+- Azure-P9-Gate unverändert beibehalten,
+- Bicep/Desired-State als mögliche spätere Adaptererweiterung eingeordnet und ausdrücklich nicht in den initialen Iststandscontract aufgenommen,
+- DE-WC-01 mit Contract-, Determinismus-, Providerunabhängigkeits- und No-Invention-Gate in Phase 2 aufgenommen.
 
 ### 2026-08-13 – Abhängigkeit zum Azure-P9-Relationship-Schema abgegrenzt
 
