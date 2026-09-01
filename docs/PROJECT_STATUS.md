@@ -1,6 +1,6 @@
 # DocumentationEngine – konsolidierter Projektstand
 
-Stand: 2026-08-13
+Stand: 2026-09-01
 
 Dieses Dokument konsolidiert den bisher im Gesamtprojekt beschlossenen und bekannten Stand der `DocumentationEngine`. Es trennt bewusst zwischen bereits beschlossenen, bereits implementierten, offenen und später möglichen Punkten.
 
@@ -185,6 +185,35 @@ Als aktueller Prototyprahmen wurden fünf Sichten konsolidiert:
 
 Die konkrete technische Implementierung dieser Views bleibt offen.
 
+### 1.9 Providerunabhängiger Canonical Infrastructure Core
+
+Der fachliche Kernvertrag für DE-WC-01 ist jetzt beschlossen und in `docs/architecture/CANONICAL_MODEL.md` dokumentiert.
+
+Der Core trennt Providerdaten von Semantic Views und Renderern und besteht aus:
+
+```text
+InfrastructureNode
+Relationship
+EvidenceReference
+CoverageRecord
+```
+
+Verbindlich sind insbesondere:
+
+- stabile technische IDs als Beziehungsgrundlage,
+- Erhalt von `providerType` und `providerRelationshipType`,
+- Evidence-Pflicht für jeden Node und jede Relationship,
+- deterministische Ableitungen nur aus maschinenauflösbaren Fakten,
+- keine Namensheuristik als Faktenersatz,
+- explizites Coverage-Modell,
+- referentielle Integrität,
+- deterministische Sortierung,
+- keine Renderer-/Layoutattribute im Core.
+
+Der globale Core ist ausdrücklich nicht von Azure P9 abhängig. Der **produktive Azure-Provider-Adapter** bleibt dagegen weiterhin an das stabilisierte und versionierte P9-Relationship-Schema des `AzureInfrastructureCollector` gebunden.
+
+Die technische Implementierung des Core-Modells ist noch offen.
+
 ## 2. Bereits implementiert
 
 Nach dem derzeit bekannten Stand sind vor allem Plattform-/Repository-Grundlagen und die konsolidierte Architektur-/Prototypdokumentation vorhanden.
@@ -205,6 +234,8 @@ Nach dem derzeit bekannten Stand sind vor allem Plattform-/Repository-Grundlagen
 | Techniker-Dokumentationsstandard (Prototyp) | implementiert |
 | Diagram Engine Standard (Prototyp) | implementiert |
 | Prototyp-Erkenntnis-/Fehlerdokument | implementiert |
+| Canonical-Infrastructure-Core-Fachspezifikation | implementiert (`docs/architecture/CANONICAL_MODEL.md`) |
+| Technische Core-Modell-/Validator-Implementierung | **noch nicht implementiert** |
 | Eigentliche fachliche `DocumentationEngine` | **noch nicht implementiert** |
 | Produktiver End-to-End-Dokumentationsbuild | **noch nicht implementiert** |
 
@@ -309,7 +340,9 @@ Damit ist fest:
 
 Noch nicht abschließend entschieden ist, ob die technische Engine-Schnittstelle dieses Paket direkt übernimmt oder ein eigenes versioniertes Exchange-Schema erhält.
 
-Details: `COLLECTOR_INTERFACE.md`.
+Der globale Canonical Infrastructure Core ist inzwischen spezifiziert. Das produktive Mapping des Azure-Outputs auf diesen Core bleibt bis zur Stabilisierung von Collector-P9 offen.
+
+Details: `COLLECTOR_INTERFACE.md` und `docs/architecture/CANONICAL_MODEL.md`.
 
 ### 3.6 OPNsenseDocumentation
 
@@ -374,15 +407,21 @@ Vorgesehene Bereiche sind insbesondere:
 
 ### 4.2 Interne Modelle
 
-Beschlossen ist die Abstraktionsfolge `Relationship Graph -> Semantic View Builder -> View Models -> Renderer`.
+Beschlossen sind inzwischen:
+
+- die Abstraktionsfolge `Relationship Graph -> Semantic View Builder -> View Models -> Renderer`,
+- der providerunabhängige Canonical Infrastructure Core aus `InfrastructureNode`, `Relationship`, `EvidenceReference` und `CoverageRecord`,
+- Evidence-/No-Invention- und referentielle Integritätsregeln,
+- die Trennung realer technischer Scopes von späteren semantischen Diagrammzonen.
 
 Noch offen sind:
 
 - konkretes Document View Model,
-- konkretes Infrastructure-/Relationship-Modell,
 - konkretes Diagram View Model,
-- technische Modellrepräsentation,
-- Versionierung der internen Modelle.
+- technische Modellrepräsentation/Serialisierung,
+- Versionierung und Kompatibilitätsstrategie der internen Modelle,
+- technische Implementierung des Core-Validators,
+- konkrete Implementierung des Semantic View Builders.
 
 ### 4.3 Template und Rendering
 
@@ -436,6 +475,10 @@ Weiterhin offen:
 - konkrete `SharedModules`-Nutzung.
 
 ### 4.6 Tests und Quality Gates
+
+Die Core-Fachspezifikation definiert bereits verpflichtende spätere Contract-/Fail-Closed-/Determinismus-/Providerunabhängigkeits-/No-Invention-Tests für DE-WC-01.
+
+Weiter offen sind die konkrete Testtechnologie und die darüber hinausgehende Gesamtstrategie für:
 
 - Unit Tests,
 - Schema-/Contract-Tests,
@@ -492,6 +535,8 @@ Bereits als spätere Ausbaustufen erkennbar:
 - weitere Dokumentationstypen,
 - weitere Architekturdiagrammtypen,
 - ggf. automatisiertes Publishing in Knowledge-Base-Zielsysteme nach späterer Architekturentscheidung.
+
+Bicep/ARM als zusätzliche **Desired-State-Quelle** kann später als eigener Provider-/Adapterpfad bewertet werden. Dies ändert nicht den aktuellen Iststandsvertrag, nach dem Azure-Kundendokumentation aus freigegebenen Collector-Artefakten entsteht.
 
 ## 7. Arbeitsregel
 
