@@ -2,11 +2,11 @@
 
 Zentrale Engine zur Generierung standardisierter technischer Kundendokumentationen aus validierten Collector- und IaC-Daten.
 
-> **Projektstatus:** Initialisierung / Architekturrahmen konsolidiert. Der providerunabhängige Canonical Infrastructure Core ist fachlich beschlossen; Bicep/IaC ist als initiale Desired-State-Quelle eingeplant; ein rendererunabhängiges Document View Model ist als kanonischer Dokumentvertrag beschlossen; die eigentliche fachliche Engine ist noch nicht implementiert.
+> **Projektstatus:** Initialisierung / Architekturrahmen konsolidiert. Der providerunabhängige Canonical Infrastructure Core ist fachlich beschlossen; Bicep/IaC ist als initiale Desired-State-Quelle eingeplant; ein rendererunabhängiges Document View Model ist als kanonischer Dokumentvertrag beschlossen; der IntuneCD-/IDD-Cross-Project- und Consumer-Contract ist fachlich beschlossen; die eigentliche fachliche Engine ist noch nicht implementiert.
 >
 > **Logische Einordnung im Gesamtprojekt:** `00-Platform / DocumentationEngine`
 >
-> **Aktuelles GitHub-Arbeitsrepository:** `Vertax1337/10-DocumentationEngine`
+> **Aktuelles GitHub-Arbeitsrepository:** `Vertax1337/00-Platform-DocumentationEngine`
 
 ## Zweck
 
@@ -23,11 +23,11 @@ Der kanonische Dokumentvertrag ist ein **rendererunabhängiges Document View Mod
 
 ## Zwei technische Perspektiven
 
-Die Engine unterscheidet von Beginn an zwischen tatsächlichem Iststand und versioniertem IaC-Sollstand:
+Die Engine unterscheidet von Beginn an zwischen tatsächlichem Iststand und versioniertem Sollstand:
 
 ```text
 Actual State
-  AzureInfrastructureCollector / weitere Collector
+  AzureInfrastructureCollector / IntuneCD / weitere Collector
         |
         v
 Actual-State Adapter
@@ -36,23 +36,23 @@ Actual-State Adapter
 Canonical Graph [actual]
 
 Desired State
-  Bicep / IaC
+  Bicep / IaC / freigegebener Intune Default Deployment Stand
         |
         v
-Bicep Desired-State Adapter
+Desired-State Adapter
         |
         v
 Canonical Graph [desiredTemplate|desiredDeployment]
 ```
 
-Bicep ersetzt den Collector nicht als Iststandsbeweis. Der Collector ersetzt Bicep nicht als IaC-Source-of-Truth.
+Bicep ersetzt den Collector nicht als Iststandsbeweis. IntuneCD-Kundenbackups sind Actual State; ein freigegebener Stand aus `30-IDD / IntuneDefaultDeployment` ist Intune Desired State (`desiredDeployment`).
 
 Actual und Desired werden nicht stillschweigend zusammengeführt. Ein späterer Abgleich erfolgt über einen expliziten Reconciliation-Contract.
 
 ## Rolle in der Gesamtarchitektur
 
 ```text
-Collector-/IaC-Quelle
+Collector-/IaC-/Provider-Quelle
        |
        v
 Normalisierung / Build-Artefakt
@@ -86,9 +86,11 @@ CUST-<Debitor>-<Name>
 
 Die `DocumentationEngine` ist zentrale Plattformlogik. Sie gehört nicht in einzelne Collector-Repositories und nicht in kundenspezifische `CUST-*`-Projekte.
 
-**Verbindliche Trennlinie Actual State:** Die DocumentationEngine inventarisiert Azure nicht selbst erneut. Für Azure konsumiert sie freigegebene, normalisierte Collector-Artefakte. Details: [`docs/COLLECTOR_INTERFACE.md`](docs/COLLECTOR_INTERFACE.md).
+**Verbindliche Trennlinie Actual State:** Die DocumentationEngine inventarisiert Azure oder Intune nicht selbst erneut live, wenn ein freigegebener Provider-/Snapshot-Contract vorliegt. Für Azure konsumiert sie freigegebene, normalisierte Collector-Artefakte. Details: [`docs/COLLECTOR_INTERFACE.md`](docs/COLLECTOR_INTERFACE.md).
 
 **Verbindliche Trennlinie Desired State:** Für IaC-verwaltete Workloads wird Bicep von Beginn an als First-Class-Desired-State-Quelle eingeplant. Details: [`docs/IAC_BICEP_INTERFACE.md`](docs/IAC_BICEP_INTERFACE.md).
+
+**Verbindliche Intune-Trennlinie:** IntuneCD-Kundenbackups werden über einen versionierten BSSE Intune Snapshot-/Provenance-Contract als `actual` konsumiert. Der freigegebene `30-IDD / IntuneDefaultDeployment`-Stand wird über denselben Contract als `desiredDeployment` eingeordnet. Details: [`docs/INTUNECD_INTERFACE.md`](docs/INTUNECD_INTERFACE.md).
 
 **Verbindliche Trennlinie Dokumentoutput:** Markdown, DOCX und PDF sind Renderer desselben strukturierten Document View Models. Markdown ist nicht die kanonische Dokument-Source-of-Truth. Details: [`docs/architecture/DOCUMENT_VIEW_MODEL.md`](docs/architecture/DOCUMENT_VIEW_MODEL.md).
 
@@ -98,6 +100,8 @@ Die `DocumentationEngine` ist zentrale Plattformlogik. Sie gehört nicht in einz
 - Provisionierung über den bestehenden DEVOPS-/Platform-Bootstrap.
 - Collector liefern den belegten Actual State.
 - Bicep/IaC liefert den versionierten Desired State für IaC-verwaltete Workloads.
+- IntuneCD-Kundenbackup liefert Intune Actual State; freigegebener `30-IDD/IntuneDefaultDeployment`-Stand liefert Intune `desiredDeployment`.
+- Intune wird über einen versionierten Snapshot-/Provenance-Contract entkoppelt; native IntuneCD-Dateinamen/-Verzeichnisstruktur sind nicht der Canonical Contract.
 - Actual und Desired tragen eine explizite Graph-Perspektive.
 - Vorgelagerte Schema-, Sicherheits-, Contract- und Quality-Gates arbeiten fail-closed.
 - Zentrale Pipeline-Integration erfolgt über `PipelineTemplates`.
@@ -115,6 +119,7 @@ Die `DocumentationEngine` ist zentrale Plattformlogik. Sie gehört nicht in einz
 - Jeder kanonische Node und jede kanonische Relationship benötigt Evidence.
 - Renderer-/Layoutattribute gehören nicht in den Canonical Infrastructure Core.
 - Desired-vs-Actual-Korrelation darf nicht allein über Namen erfolgen.
+- Native IntuneCD-Dokumentation ist keine Canonical Source of Truth; IntuneCD Compare ersetzt nicht den providerunabhängigen Reconciliation-Contract.
 
 ## Konsolidierter Prototypstand
 
@@ -133,7 +138,7 @@ Diese Erkenntnisse legen noch keine konkrete Rendertechnologie fest.
 ## Aktueller Core-Contract
 
 ```text
-Collector / Bicep / weitere Quellen
+Collector / Bicep / Intune / weitere Quellen
         |
         v
 Source / Provider Adapter
@@ -162,7 +167,7 @@ Details und DE-WC-01-Gate: [`docs/architecture/CANONICAL_MODEL.md`](docs/archite
 
 Der Dokumentvertrag ist in [`docs/architecture/DOCUMENT_VIEW_MODEL.md`](docs/architecture/DOCUMENT_VIEW_MODEL.md) definiert.
 
-Für Azure bleibt nur der **produktive Actual-State-Adapter** vom stabilisierten P9-Relationship-Schema des `AzureInfrastructureCollector` abhängig. Der Bicep Desired-State Adapter ist kein P9-Blocker.
+Für Azure bleibt nur der **produktive Actual-State-Adapter** vom stabilisierten P9-Relationship-Schema des `AzureInfrastructureCollector` abhängig. Der Bicep Desired-State Adapter und der fachliche Intune Snapshot-/Source-Contract sind keine P9-Blocker.
 
 ## Bicep / IaC
 
@@ -186,11 +191,44 @@ Canonical Graph [desiredTemplate|desiredDeployment]
 
 Secret-Werte dürfen nicht in Canonical Graph, Evidence, Logs oder Dokumentartefakte übernommen werden.
 
+## Intune / IntuneCD / IDD
+
+Fachlicher Pfad:
+
+```text
+CUST-* / IntuneCD Backup
+        |
+        v
+BSSE Intune Snapshot Contract
+        |
+        v
+Intune Source Adapter
+        |
+        v
+Canonical Graph [actual]
+
+30-IDD / IntuneDefaultDeployment
+        |
+        v
+BSSE Intune Snapshot Contract
+        |
+        v
+Intune Source Adapter
+        |
+        v
+Canonical Graph [desiredDeployment]
+```
+
+Der plattformweite Ownership-/Provisionierungsvertrag liegt im `PlatformBootstrap`. Die DocumentationEngine besitzt ausschließlich die Consumer-/Canonical-Semantik.
+
 ## Noch ausdrücklich offen
 
 - konkreter gemeinsamer Input-Contract und physische Paketstruktur,
 - technische Repräsentation/Serialisierung und Versionierung des Canonical Core,
 - konkrete technische Bicep-Parserstrategie,
+- technische Serialisierung/Schema-Technologie des Intune Snapshot Contracts,
+- technische Intune Source Adapter-Implementierung,
+- konkrete technische Intune-Objekt-/Property-Mappings und initiale Domain-Abdeckung,
 - technische Repräsentation/Serialisierung und Versionierung des Document View Models,
 - internes Diagram View Model,
 - Reconciliation-/Diff-Result-Model,
@@ -210,14 +248,16 @@ Secret-Werte dürfen nicht in Canonical Graph, Evidence, Logs oder Dokumentartef
 
 | Bereich | Beziehung zur DocumentationEngine |
 |---|---|
-| `DEVOPS / PlatformBootstrap` | Provisioniert zentrale Plattform- und Kundenrepositories. |
-| `PipelineTemplates` | Zukünftige zentrale Orchestrierung für Collector- und IaC-Artefakte. |
+| `DEVOPS / PlatformBootstrap` | Provisioniert zentrale Plattform- und Kundenrepositories und hält die kanonische Intune Cross-Project-Ownership-Grenze. |
+| `30-IDD / IntuneDefaultDeployment` | Liefert nach Freigabe Intune `desiredDeployment`; konkrete Runtime-/Repo-Integration wird außerhalb der Engine umgesetzt. |
+| `IntuneCD / IntuneCD Monitor` | Provider-/Producer-Seite für Intune Actual State; Engine konsumiert den validierten Snapshot-Contract. |
+| `PipelineTemplates` | Zukünftige zentrale Orchestrierung für Collector-, IaC- und Intune-Snapshot-Artefakte. |
 | `SecurityValidation` | Vorgelagerte Sicherheits- und Validierungsgrenze. |
 | `SharedModules` | Quelle für tatsächlich gemeinsam genutzte technische Komponenten. |
 | `AzureInfrastructureCollector` | Liefert normalisierten Azure-Actual-State; Azure wird nicht erneut inventarisiert. |
 | IaC-/Bicep-Repositories | Liefern versionierten Desired State für IaC-verwaltete Workloads. |
 | `OPNsenseDocumentation` | Liefert normalisierten Netzwerk-/Firewall-Datenstand. |
-| `CUST-*` | Kundenspezifischer Consumer/Zielort generierter Dokumentationsartefakte. |
+| `CUST-*` | Kundenspezifischer Consumer/Zielort generierter Dokumentationsartefakte sowie Boundary für kundenspezifische Intune-Actual-Snapshots. |
 
 ## Dokumentation dieses Repositories
 
@@ -225,6 +265,7 @@ Secret-Werte dürfen nicht in Canonical Graph, Evidence, Logs oder Dokumentartef
 - [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) – kanonischer technischer Umsetzungsplan.
 - [`docs/COLLECTOR_INTERFACE.md`](docs/COLLECTOR_INTERFACE.md) – Actual-State-Collector-Grenze.
 - [`docs/IAC_BICEP_INTERFACE.md`](docs/IAC_BICEP_INTERFACE.md) – Bicep/IaC-Desired-State-Grenze.
+- [`docs/INTUNECD_INTERFACE.md`](docs/INTUNECD_INTERFACE.md) – IntuneCD-/IDD-Snapshot-, Evidence- und Adaptergrenze.
 - [`docs/architecture/CANONICAL_MODEL.md`](docs/architecture/CANONICAL_MODEL.md) – providerunabhängiger perspektivfähiger Core-Contract.
 - [`docs/architecture/DOCUMENT_VIEW_MODEL.md`](docs/architecture/DOCUMENT_VIEW_MODEL.md) – rendererunabhängiger kanonischer Dokumentvertrag und Renderer-Grenze.
 - [`docs/TECHNICIAN_DOCUMENTATION_STANDARD.md`](docs/TECHNICIAN_DOCUMENTATION_STANDARD.md) – technikerorientierter Dokumentationsstandard.
