@@ -1,23 +1,26 @@
 # DocumentationEngine – Diagram Engine Standard
 
-Stand: 2026-08-13
-Status: **Konsolidierter Prototypstandard; Renderer- und Layouttechnologie weiterhin offen**
+Stand: 2026-09-01
+Status: **Konsolidierter Prototypstandard; Actual-/Desired-Perspektiven ergänzt; Renderer- und Layouttechnologie weiterhin offen**
 
-Dieses Dokument hält die aus Microsoft-Referenzen und den bisherigen realen Collector-Prototypen gewonnenen Regeln für die spätere Diagram Engine fest.
+Dieses Dokument hält die fachlichen Regeln für die spätere Diagram Engine fest.
 
 ---
 
 ## 1. Ziel
 
-Die Diagram Engine erzeugt aus normalisierten, validierten Infrastruktur-Fakten technikergeeignete Diagramme.
+Die Diagram Engine erzeugt aus validierten technischen Fakten technikergeeignete Diagramme.
 
-Sie ist **kein Infrastruktur-Collector** und darf fehlende Ressourcen oder Beziehungen nicht durch typische Referenzarchitekturen ergänzen.
+Sie ist **kein Infrastruktur-Collector**, kein IaC-Deploymentwerkzeug und darf fehlende Ressourcen oder Beziehungen nicht durch typische Referenzarchitekturen ergänzen.
 
 ```text
-Collector JSON
+Collector / Bicep / weitere Quellen
       |
       v
-Relationship Graph
+Source / Provider Adapter
+      |
+      v
+Canonical Infrastructure Model
       |
       v
 Semantic View Builder
@@ -39,52 +42,61 @@ Die Datenbasis und die visuelle Darstellung sind bewusst getrennt.
 
 ---
 
-## 2. Oberste Faktentreue-Regel
+## 2. Oberste Faktentreue-Regeln
 
 ### DE-DIAG-001 – Nur belegte Ressourcen
 
 Ein Infrastruktur- oder Serviceelement darf nur dargestellt werden, wenn es durch einen freigegebenen Input belegt ist.
 
 ```text
-Resource / Relationship im Collector belegt
-        -> darf dargestellt werden
+Resource / Relationship im freigegebenen Input belegt
+        -> darf in der passenden Perspektive dargestellt werden
 
 nicht belegt
         -> wird nicht dargestellt
 ```
 
-Eine Microsoft-Referenzarchitektur darf **nur** als Layout-/Kommunikationsreferenz dienen.
-
-Sie darf niemals verwendet werden, um im Kunden-Iststand fehlende Komponenten wie beispielsweise Azure Firewall, Bastion, DDoS, ExpressRoute oder andere typische Plattformdienste zu ergänzen.
+Eine Microsoft-Referenzarchitektur darf nur Layout-/Kommunikationsreferenz sein.
 
 ### DE-DIAG-002 – Keine Namensheuristik als Faktenersatz
 
 Technische Beziehungen werden nach Möglichkeit über stabile IDs bzw. explizite Relationships dargestellt.
 
-Namen dürfen nicht verwendet werden, um eine externe Beziehung zu erfinden, die im Input nicht belegt ist.
+Namen dürfen nicht verwendet werden, um externe Beziehungen zu erfinden.
 
 ### DE-DIAG-003 – Keine generative Bildausgabe als technische Source of Truth
 
-Generative Bildmodelle dürfen für:
+Generative Bildmodelle dürfen für Stilfindung, visuelle Inspiration, Mockups und Layoutideen verwendet werden.
 
-- Stilfindung,
-- visuelle Inspiration,
-- Mockups,
-- Layoutideen
+Sie dürfen nicht den finalen technischen Diagramminhalt erzeugen.
 
-verwendet werden.
+Produktive Diagramme werden deterministisch aus einem validierten Diagram View Model gerendert.
 
-Sie dürfen **nicht** den finalen technischen Diagramminhalt erzeugen.
+### DE-DIAG-004 – Perspektive ist Pflicht
 
-Grund: Im Prototyp wurde eine optisch plausible Azure-Übersicht erzeugt, die jedoch nicht vorhandene Dienste wie Azure Firewall/Bastion enthielt. Ein solches Verhalten ist für technische Kundendokumentation nicht akzeptabel.
+Jedes technische Diagramm muss eindeutig ausweisen, welche Perspektive dargestellt wird.
 
-Produktive Diagramme müssen daher deterministisch aus dem Diagram View Model gerendert werden.
+Initiale Perspektiven:
+
+```text
+actual
+desiredTemplate
+desiredDeployment
+reconciled   # erst nach explizitem Reconciliation-Contract
+```
+
+Regeln:
+
+- `actual` basiert auf freigegebenem Iststandsinput, z. B. Collector-Snapshot.
+- `desiredTemplate` basiert auf versioniertem IaC-Template und kann konditionale/unaufgelöste Ressourcen enthalten.
+- `desiredDeployment` basiert auf IaC plus freigegebenem, sanitiztem Deploymentkontext.
+- `reconciled` darf erst nach expliziter Actual-/Desired-Korrelation erzeugt werden.
+- Desired State darf nicht als gemessener Kunden-Iststand beschriftet werden.
+- Actual und Desired dürfen nicht durch Name-only-Matching in einem Diagramm zusammengeführt werden.
 
 ---
 
 ## 3. Microsoft-orientierte Darstellungsregeln
-
-Microsofts aktuelle Architekturleitlinien werden als Kommunikationsstandard übernommen, soweit sie mit dem kundenspezifischen Faktenmodell vereinbar sind.
 
 ### 3.1 Offizielle Icons
 
@@ -104,10 +116,6 @@ https://learn.microsoft.com/en-us/azure/architecture/icons/
 
 ### 3.2 Progressive Disclosure
 
-Nicht alle Details gehören in ein Diagramm.
-
-Die Diagrammdokumentation folgt dem Prinzip:
-
 ```text
 Context / Gesamtübersicht
         -> Domänensicht
@@ -115,10 +123,7 @@ Context / Gesamtübersicht
         -> Detailinventar
 ```
 
-Damit wird die von Microsoft im Well-Architected Framework beschriebene Regel **"Layer, don't overload"** auf die DocumentationEngine übertragen.
-
-Microsoft-Referenz:
-https://learn.microsoft.com/en-us/azure/well-architected/architect-role/design-diagrams
+High-Level- und Detaildiagramme werden bewusst getrennt.
 
 ### 3.3 Legende und visuelle Semantik
 
@@ -126,60 +131,52 @@ Jedes Diagramm mit unterschiedlichen Linien-, Rahmen- oder Containersemantiken e
 
 Die Bedeutung darf nicht ausschließlich über Farbe vermittelt werden.
 
+Bei Desired-/Reconciled-Sichten muss zusätzlich die Perspektive visuell/textuell eindeutig erkennbar sein.
+
 ### 3.4 Diagrammquellen unter Versionskontrolle
 
 Das Diagram View Model bzw. die deterministische Diagrammquelle wird versionierbar abgelegt bzw. reproduzierbar aus versionierten Inputs erzeugt.
 
 PNG/PDF sind Ausgabeformate, nicht die einzige Source of Truth.
 
+Für Bicep-basierte Views muss die Source-Provenance mindestens bis zum IaC-Commit/Build zurückführbar sein.
+
 ---
 
-## 4. Erkenntnisse aus Microsoft Resource Visualizer
+## 4. Referenzen
 
-Microsofts `azure-resource-visualizer` dient als fachliche Referenz für den Analyseablauf, nicht als festgelegte technische Dependency.
+### 4.1 Microsoft Resource Visualizer
 
-Relevante Prinzipien:
-
-- Resource Discovery,
-- Deep Resource Analysis,
-- Relationship Mapping,
-- Diagram Generation,
-- Resource Documentation Creation.
-
-Der Microsoft Skill erzeugt Mermaid-Diagramme aus Azure-Ressourcengruppen. Für dieses Projekt bleibt Mermaid jedoch nur eine mögliche Rendertechnologie; es besteht weiterhin keine globale Festlegung darauf.
+`azure-resource-visualizer` dient als fachliche Referenz für Discovery, Relationship Mapping, Diagram Generation und Resource Documentation Creation, nicht als festgelegte technische Dependency.
 
 Microsoft-Referenz:
 https://learn.microsoft.com/en-us/azure/developer/azure-skills/skills/azure-resource-visualizer
 
-Die DocumentationEngine unterscheidet sich bewusst dadurch, dass sie nicht erneut live Azure abfragt, sondern freigegebene Collector-Artefakte konsumiert.
+Die DocumentationEngine unterscheidet sich dadurch, dass sie freigegebene Collector- bzw. IaC-Artefakte konsumiert und nicht ungeplant selbst live inventarisiert.
 
----
+### 4.2 Azure Landing Zone Diagramme
 
-## 5. Erkenntnisse aus Azure Landing Zone Diagrammen
-
-Azure-Landing-Zone-Referenzdiagramme zeigen ein für die DocumentationEngine relevantes Kommunikationsmuster:
+Relevante Kommunikationsmuster:
 
 - semantische Bereiche statt freiem Ressourcengraph,
-- klare Plattform-/Workload-Trennung,
+- Plattform-/Workload-Trennung,
 - Connectivity als eigene Zone,
 - externe/on-premises Systeme außerhalb der Azure-Grenze,
 - Hierarchie und Position transportieren Bedeutung,
 - High-Level-Sicht vor Detailansicht.
 
-Microsoft stellt diese Referenzarchitekturen als anpassbare Ausgangspunkte und unter anderem als Visio/PDF bereit.
-
 Microsoft-Referenz:
 https://learn.microsoft.com/en-us/azure/cloud-adoption-framework/ready/landing-zone/
 
-Für Kundenbilder gilt dennoch: Nur tatsächlich vorhandene Komponenten werden dargestellt.
+Für Kundenbilder gilt dennoch: Nur tatsächlich belegte Komponenten der jeweiligen Perspektive werden dargestellt.
 
 ---
 
-## 6. Semantische Zonen statt freiem Graph-Autolayout
+## 5. Semantische Zonen statt freiem Graph-Autolayout
 
-Der erste Prototyp hat gezeigt, dass reines automatisches Graph-Verteilen für Technikerdiagramme nicht ausreicht.
+Freies Graph-Autolayout reicht für High-Level-Technikerdokumentation nicht aus.
 
-Das Ziel ist ein kontrolliertes Layout mit semantischen Zonen.
+Ziel ist ein kontrolliertes Layout mit semantischen Zonen.
 
 Beispiel:
 
@@ -196,94 +193,74 @@ Beispiel:
 On-Prem / Extern liegt außerhalb der Azure-/Subscription-Zone.
 ```
 
-Die Position eines Elements trägt damit bewusst Information.
-
-### Layoutgrundsätze
+Layoutgrundsätze:
 
 - feste Raster und Alignment-Regeln,
 - konsistente Abstände,
 - stabile Containerpositionen,
 - gleiche Ressourcenklassen mit gleicher Darstellungslogik,
 - Kanten möglichst ohne unnötige Kreuzungen,
-- Detailtiefe abhängig von der jeweiligen View,
-- keine künstliche Flächenfüllung durch nicht vorhandene Dienste.
+- Detailtiefe abhängig von der View,
+- keine künstliche Flächenfüllung,
+- gleiche Inputs und gleiche Regeln erzeugen reproduzierbare Positionierung soweit der gewählte Renderer dies technisch erlaubt.
 
 Die konkrete Layoutbibliothek bzw. Rendertechnologie ist weiterhin **OFFEN**.
 
 ---
 
-## 7. Fünf Standard-Views
+## 6. Fünf Standard-Views
 
-Die bisherigen Prototypen bestätigen fünf sinnvolle Informationssichten als Arbeitsstandard.
+### View 01 – Azure-/Infrastruktur-Gesamtübersicht
 
-### View 01 – Azure-Gesamtübersicht
-
-Zweck:
-
-Ein Techniker soll innerhalb weniger Sekunden erkennen:
+Technikerfragen:
 
 - Tenant/Subscription-Scope,
 - zentrale Connectivity,
 - wesentliche Workloads,
-- zentrale Plattform-/Shared Services,
+- Plattform-/Shared Services,
 - externe/on-premises Anbindung,
-- grobe Schutz-/Betriebsbeziehungen.
+- grobe Protection-/Betriebsbeziehungen.
 
-Nicht vorgesehen:
+Nicht vorgesehen: vollständige Ressourcenliste, jede NIC/Disk/Policy, vollständige Properties.
 
-- vollständige Ressourcenliste,
-- jede NIC/Disk/Policy,
-- Detailkonfigurationen.
+Diese View kann sowohl als `actual` als auch als eindeutig gekennzeichnete Bicep-`desired*`-Architektursicht erzeugt werden.
 
 ### View 02 – Netzwerk & Connectivity
 
 Primäre Fragen:
 
-- Wie sind Netze miteinander verbunden?
-- Welche VNets/Subnets existieren?
+- Welche VNets/Subnets existieren bzw. sind vorgesehen?
 - Welche Peerings/Gateways/Connections sind relevant?
-- Welche NSGs/Routen wirken auf welche Segmente?
+- Welche NSGs/Routen wirken auf Segmente?
 - Wie ist On-Premises angebunden?
 
-Nur vorhandene Netzwerkkomponenten werden dargestellt.
+Actual und Desired werden nicht ungekennzeichnet vermischt.
 
 ### View 03 – Workload & Deployment
 
-Die Gruppierung erfolgt primär nach **Betriebsfunktion/Workload**, nicht nach Azure-Ressourcentyp.
+Gruppierung primär nach Betriebsfunktion/Workload statt Ressourcentyp.
 
-Beispiele:
-
-- AVD als betriebliche Domäne,
-- Sage/ERP als betriebliche Domäne,
-- Domain Services als betriebliche Domäne.
-
-Detailressourcen wie NICs und Disks werden nur eingeblendet, wenn sie für die jeweilige Sicht relevant sind.
+Für Bicep eignet sich diese View ausdrücklich zur Darstellung der versionierten Deploymentarchitektur.
 
 ### View 04 – Backup & Recovery
 
-Der erste Prototyp war zu Vault-/Policy-zentriert und damit zu maschinennah.
-
-Die Technikersicht startet künftig bei der geschützten Ressource:
+Technikersicht startet bei der geschützten Ressource:
 
 ```text
 Geschützte Ressource
   -> Protection / Backup Status
   -> verwendete Policy
   -> zuständiger Vault
-  -> letzter verfügbarer Recovery Point / relevante Recovery-Metadaten
+  -> Recovery-Metadaten
 ```
 
-Erst sekundär wird die gemeinsame Vault-/Policy-Struktur dargestellt.
-
-Primäre Technikerfrage:
-
-> Was ist geschützt und wodurch?
+Wichtig: Bicep kann geplante Protection-Ressourcen darstellen. Tatsächlicher Schutzstatus und Recovery Points sind Actual-State-Fakten und dürfen nicht aus IaC erfunden werden.
 
 ### View 05 – Security & Operations
 
-Die Sicht wird nur mit tatsächlich fachlich erhobenen Security-/Governance-/Monitoring-/Automation-Daten vollständig gerendert.
+Wird nur mit tatsächlich fachlich verfügbaren Daten vollständig gerendert.
 
-Bis entsprechende Collector-Domänen vorhanden sind, darf die Engine eine **Coverage-/Verfügbarkeitsansicht** darstellen, statt eine hypothetische Topologie zu erfinden.
+Bis ausreichende Inputs vorhanden sind, wird Coverage statt hypothetischer Topologie gezeigt.
 
 Beispiel:
 
@@ -298,57 +275,57 @@ Security & Operations
 [ ] Automation Details            noch nicht erhoben
 ```
 
-Später vorgesehene Bereiche:
-
-```text
-Security & Governance
-|- RBAC
-|- Resource Locks
-|- Policy Assignments
-|- Key Vault
-`- Defender / Security Configuration
-
-Operations
-|- Log Analytics
-|- Diagnostic Settings
-|- Alerts
-|- Action Groups
-|- Automation Accounts
-|- Runbooks
-`- Schedules
-```
-
 ---
 
-## 8. Kanten- und Beziehungssemantik – Arbeitsstandard
+## 7. Kanten- und Beziehungssemantik
 
-Die exakten Stile werden mit dem Renderer finalisiert. Fachlich sollen mindestens folgende Kategorien unterschieden werden:
+Mindestens folgende Kategorien werden fachlich unterschieden:
 
-- **technische Topologie / Resource Relationship** – explizit belegte Ressourcenbeziehung,
-- **Netzwerk-/Datenpfad** – belegte Konnektivität,
-- **Management-/Konfigurationsbeziehung** – z. B. Zuordnung/Verwendung,
-- **Protection/Backup** – Schutzbeziehung,
-- **externe Verbindung** – Azure zu On-Prem/extern.
+- technische Topologie / Resource Relationship,
+- Netzwerk-/Datenpfad,
+- Management-/Konfigurationsbeziehung,
+- Protection/Backup,
+- externe Verbindung.
 
 Jede View enthält nur Kanten, die für ihre Fragestellung relevant sind.
 
+Desired-State-Kanten müssen aus Bicep/ARM-Strukturen maschinenauflösbar belegbar sein; reine Namensähnlichkeit ist unzulässig.
+
 ---
 
-## 9. Fehlende Daten
-
-Fehlende oder noch nicht erhobene Daten werden nicht implizit ergänzt.
+## 8. Fehlende und unaufgelöste Daten
 
 Erlaubte Darstellungen:
 
-- Bereich weglassen, wenn er für die View nicht erforderlich ist,
-- explizit `nicht erhoben` / `nicht verfügbar` kennzeichnen,
-- Coverage-Status anzeigen.
+- Bereich weglassen,
+- `nicht erhoben` / `nicht verfügbar`,
+- Coverage-Status,
+- Bicep-Condition `unresolved`, wenn sie ohne freigegebenen Deploymentkontext nicht sicher auflösbar ist.
 
 Nicht erlaubt:
 
 - typische Standardressource ergänzen,
 - aus Namensmustern externe Beziehungen erfinden,
-- ein fehlendes Feld als bekannten Standardwert darstellen.
+- fehlendes Feld als bekannten Standardwert darstellen,
+- `unresolved` als `enabled` ausgeben.
+
+---
+
+## 9. Desired/Actual Reconciliation
+
+Die Diagram Engine plant eine spätere Reconciliation-View ein, erzeugt sie aber erst auf Basis eines expliziten Reconciliation-Contracts.
+
+Zielzustände können beispielsweise sein:
+
+```text
+matched
+desiredMissing
+actualUnmanaged
+unresolved
+propertyDrift   # nur bei belastbarer Vergleichssemantik
+```
+
+Der Renderer entscheidet keine Korrelation selbst. Er erhält ein bereits validiertes Reconciliation-/Diagram View Model.
 
 ---
 
@@ -359,7 +336,7 @@ Weiterhin **OFFEN**:
 - konkretes Diagram View Model,
 - Layout-Engine,
 - SVG-Renderer,
-- Mermaid/Graphviz/PlantUML oder eigene SVG-Pipeline,
+- Mermaid/Graphviz/ELK/PlantUML/eigene SVG-Pipeline,
 - automatische Text-/Labelplatzierung,
 - Kantenrouting,
 - Icon-Katalog-Updateverfahren,
@@ -368,4 +345,4 @@ Weiterhin **OFFEN**:
 - Barrierefreiheitsprüfung,
 - Export nach DOCX/PDF.
 
-Diese Punkte werden nicht durch die Prototypen stillschweigend entschieden.
+Bicep/IaC als Desired-State-Quelle ist dagegen **nicht mehr offen**; offen ist nur die konkrete technische Adapter-/Parserimplementierung.

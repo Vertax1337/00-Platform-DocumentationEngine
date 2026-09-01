@@ -1,15 +1,27 @@
 # DocumentationEngine – Techniker-Dokumentationsstandard
 
-Stand: 2026-08-13
-Status: **Konsolidierter Zielstandard aus Prototypen; konkrete Template-Technologie offen**
+Stand: 2026-09-01
+Status: **Konsolidierter Zielstandard aus Prototypen; Actual-/Desired-Perspektivregel ergänzt; konkrete Template-Technologie offen**
 
 ## 1. Zielgruppe
 
 Die primäre Zielgruppe sind Techniker und Administratoren, die eine Kundenumgebung verstehen, betreiben, warten oder im Störungsfall analysieren müssen.
 
-Die Dokumentation ist daher **keine maschinennahe Wiedergabe des Collector-JSON**.
+Die Dokumentation ist daher **keine maschinennahe Wiedergabe von Collector-JSON oder IaC-Quelltext**.
 
-Collector-Daten liefern die Faktenbasis. Die DocumentationEngine strukturiert diese Fakten in eine für Menschen nutzbare Betriebssicht.
+Technische Quellen liefern die Faktenbasis. Die DocumentationEngine strukturiert diese Fakten in eine für Menschen nutzbare Betriebssicht.
+
+Dabei werden zwei Perspektiven strikt unterschieden:
+
+```text
+Actual State
+  -> Collector
+
+Desired State
+  -> Bicep / IaC
+```
+
+Ein Desired-State-Sollbild darf niemals ohne eindeutige Kennzeichnung als gemessener Kunden-Iststand dargestellt werden.
 
 ---
 
@@ -19,11 +31,12 @@ Die Dokumentation soll für einen Techniker zuerst beantworten:
 
 1. Was ist diese Umgebung und wofür dient sie?
 2. Wie ist sie grundsätzlich aufgebaut?
-3. Welche Workloads/Dienste sind vorhanden?
+3. Welche Workloads/Dienste sind vorhanden bzw. laut IaC vorgesehen?
 4. Wie hängen die wesentlichen Komponenten zusammen?
 5. Welche Infrastruktur ist für einen bestimmten Workload relevant?
 6. Was ist geschützt, überwacht oder automatisiert?
 7. Wo finde ich die Detaildaten, wenn ich tiefer analysieren muss?
+8. Wenn Actual und Desired gemeinsam betrachtet werden: Wo stimmt der Iststand mit dem versionierten Sollstand überein bzw. wo ist ein Abgleich nicht möglich?
 
 Die Reihenfolge ist bewusst **Orientierung vor Inventar**.
 
@@ -37,6 +50,7 @@ Inhalt:
 
 - Kunde / Umgebung / Erfassungsstand,
 - Scope der Dokumentation,
+- verwendete technische Perspektive (`actual`, `desiredTemplate`, `desiredDeployment` oder später `reconciled`),
 - wichtigste Workloads,
 - wichtigste Plattformkomponenten,
 - zentrale externe/on-premises Anbindungen,
@@ -44,7 +58,7 @@ Inhalt:
 
 Ziel:
 
-Ein neuer Techniker versteht innerhalb kurzer Zeit, womit er es zu tun hat.
+Ein neuer Techniker versteht innerhalb kurzer Zeit, womit er es zu tun hat und ob eine dargestellte Aussage gemessener Iststand oder versionierter IaC-Sollstand ist.
 
 ### Kapitel 2 – Architekturübersicht
 
@@ -52,9 +66,11 @@ Enthält die High-Level-Standard-View `Azure-Gesamtübersicht` bzw. eine äquiva
 
 Die Übersicht zeigt nur die für Orientierung relevanten Komponenten.
 
+Für IaC-verwaltete Workloads kann zusätzlich eine eindeutig als **Desired State / IaC** gekennzeichnete Architekturübersicht erzeugt werden.
+
 ### Kapitel 3 – Netzwerk & Connectivity
 
-Inhalt abhängig von verfügbaren Collector-Daten:
+Inhalt abhängig von verfügbaren Quellen:
 
 - VNets / Segmente / Subnets,
 - Peerings,
@@ -63,11 +79,13 @@ Inhalt abhängig von verfügbaren Collector-Daten:
 - NSGs,
 - Routing,
 - relevante Public-/Private-Endpunkte,
-- DNS-bezogene Infrastruktur, soweit erhoben.
+- DNS-bezogene Infrastruktur, soweit erhoben bzw. im Desired State eindeutig deklariert.
 
 Schwerpunkt:
 
 > Wie erreicht ein System ein anderes System?
+
+Actual- und Desired-Netzbeziehungen dürfen nicht ungekennzeichnet vermischt werden.
 
 ### Kapitel 4 – Workloads / Anwendungen
 
@@ -108,9 +126,11 @@ Ressource
 
 Die reine Vault-/Policy-Inventarsicht wird nachgelagert.
 
+Ein Bicep-Sollvertrag kann zeigen, dass Backup-/Protection-Ressourcen **vorgesehen** sind. Ob ein konkretes System tatsächlich aktuell geschützt ist und Recovery Points besitzt, bleibt eine Actual-State-Aussage und benötigt entsprechende Iststandsdaten.
+
 ### Kapitel 6 – Security & Governance
 
-Nur soweit fachlich erhoben:
+Nur soweit fachlich erhoben bzw. im jeweiligen Desired-State-Vertrag eindeutig deklariert:
 
 - RBAC,
 - Locks,
@@ -123,7 +143,7 @@ Nicht erhobene Bereiche werden als solche kenntlich gemacht und nicht aus Refere
 
 ### Kapitel 7 – Monitoring & Automation
 
-Nur soweit fachlich erhoben:
+Nur soweit fachlich belegt:
 
 - Log Analytics,
 - Diagnostic Settings,
@@ -145,6 +165,8 @@ Beispiele:
 - Protected Item schützt konkrete VM/Storage-Ressource,
 - Application Group verwendet konkreten Host Pool.
 
+Für Desired-State-Aussagen ist die Herkunft aus Bicep/IaC explizit kenntlich zu machen.
+
 ### Kapitel 9 – Detailinventar / Anhang
 
 Hierhin gehören die maschinennahen Vollständigkeitsdaten:
@@ -155,7 +177,8 @@ Hierhin gehören die maschinennahen Vollständigkeitsdaten:
 - SKUs,
 - Detailtabellen,
 - Relationship-Tabellen,
-- technische Konfigurationsfelder.
+- technische Konfigurationsfelder,
+- IaC-Source-/Commit-/Build-Provenance soweit für Nachvollziehbarkeit relevant und frei von Secrets.
 
 Das Inventar bleibt wichtig, soll aber die Einstiegskapitel nicht dominieren.
 
@@ -168,19 +191,22 @@ Das Inventar bleibt wichtig, soll aber die Einstiegskapitel nicht dominieren.
 - wenige Kernaussagen,
 - Diagramm statt langer Tabellen,
 - keine unnötigen ARM IDs,
-- keine vollständigen Properties.
+- keine vollständigen Properties,
+- Perspektive klar sichtbar.
 
 ### Betriebsebene
 
 - konkrete technische Namen,
 - relevante IPs/Netze/Policies/Abhängigkeiten,
 - Zustände und Konfigurationen,
-- klare Beziehungen.
+- klare Beziehungen,
+- Actual und Desired sauber getrennt.
 
 ### Anhang
 
 - maximale belegte technische Detailtiefe,
-- IDs und vollständige normalisierte Inventardaten, soweit freigegeben.
+- IDs und normalisierte Inventardaten,
+- IaC-Provenance und Contract-Metadaten, soweit freigegeben.
 
 ---
 
@@ -188,28 +214,34 @@ Das Inventar bleibt wichtig, soll aber die Einstiegskapitel nicht dominieren.
 
 Die DocumentationEngine soll sachlich und technikerorientiert formulieren.
 
-Bevorzugt:
+Bevorzugt Actual State:
 
 - "Der Session Host wird durch die Azure-VM `...` bereitgestellt."
 - "Die VM verwendet die Netzwerkschnittstelle `...`."
 - "Die Ressource ist der Backup Policy `...` zugeordnet."
+
+Bevorzugt Desired State:
+
+- "Der versionierte IaC-Sollstand sieht die Azure-VM `...` vor."
+- "Im Bicep-Deploymentvertrag ist das Subnet `...` der Ressource `...` zugeordnet."
 
 Zu vermeiden:
 
 - Marketingformulierungen,
 - ungesicherte Ursachen-/Risikobewertungen,
 - Vermutungen aus Namenskonventionen,
-- künstliche Management-Zusammenfassungen ohne Datenbasis.
+- künstliche Management-Zusammenfassungen ohne Datenbasis,
+- Formulierungen, die Desired State als gemessenen Iststand erscheinen lassen.
 
 ---
 
-## 6. Fakt, Ableitung und Hinweis
+## 6. Fakt, Ableitung, Desired State und Coverage
 
-Die Engine sollte langfristig drei Aussageklassen unterstützen:
+Die Engine soll mindestens folgende Aussageklassen unterscheiden können:
 
-### Fakt
+### Fakt / Actual State
 
-Direkt aus freigegebenem Input belegt.
+Direkt aus freigegebenem Iststandsinput belegt.
 
 ### Deterministische Ableitung
 
@@ -219,13 +251,19 @@ Beispiel:
 
 `SessionHost -> BackedByVm -> VM`
 
+### Desired State
+
+Aus einer versionierten IaC-Quelle eindeutig deklariert bzw. deterministisch daraus abgeleitet.
+
+Desired-State-Aussagen tragen die IaC-/Commit-/Build-Provenance und werden nicht als Actual State ausgegeben.
+
 ### Hinweis / Coverage
 
 Beschreibt Datenabdeckung oder fehlende Erhebung, ohne Infrastruktur zu erfinden.
 
 Beispiel:
 
-`RBAC-Detaildaten sind im aktuellen Input nicht enthalten.`
+`RBAC-Detaildaten sind im aktuellen Actual-State-Input nicht enthalten.`
 
 Freie KI-Inferenz darf nicht stillschweigend als Fakt erscheinen.
 
@@ -241,11 +279,22 @@ Standardmäßig vorgesehene Sichten:
 4. Backup & Recovery,
 5. Security & Operations.
 
-Die genaue Sichtauswahl kann abhängig von den tatsächlich vorhandenen Collector-Domänen erfolgen.
+Diese Views können abhängig vom Vertrag aus unterschiedlichen Perspektiven erzeugt werden:
+
+```text
+Actual State          -> Collector
+Desired Template      -> Bicep
+Desired Deployment    -> Bicep + sanitizter Deploymentkontext
+Reconciled            -> späterer expliziter Actual/Desired-Abgleich
+```
+
+Jedes Diagramm muss seine Perspektive eindeutig ausweisen. Ein Desired-State-Diagramm darf nicht als Kunden-Iststand beschriftet sein.
+
+Die genaue Sichtauswahl kann abhängig von den tatsächlich vorhandenen Source-Domänen erfolgen.
 
 Ein leeres oder nicht erhobenes Fachgebiet darf nicht mit typischen Standardkomponenten aufgefüllt werden.
 
-Details: `DIAGRAM_ENGINE_STANDARD.md`.
+Details: `DIAGRAM_ENGINE_STANDARD.md`, `IAC_BICEP_INTERFACE.md` und `architecture/CANONICAL_MODEL.md`.
 
 ---
 
@@ -256,14 +305,16 @@ Erlaubt:
 - Abschnitt auslassen,
 - Abschnitt als `nicht erhoben` kennzeichnen,
 - Coverage-Hinweis,
-- unbekannte Einzelwerte leer bzw. als nicht verfügbar behandeln.
+- unbekannte Einzelwerte als nicht verfügbar behandeln,
+- nicht aufgelöste Bicep-Conditions als `unresolved` markieren.
 
 Nicht erlaubt:
 
 - Defaultwerte erfinden,
 - nicht vorhandene Dienste ergänzen,
 - Rollen allein aus Namen als gesichert behaupten,
-- fehlende Beziehungen durch typische Azure-Architekturmuster ersetzen.
+- fehlende Beziehungen durch typische Azure-Architekturmuster ersetzen,
+- nicht aufgelöste Bicep-Conditions als aktiviert annehmen.
 
 ---
 
@@ -271,7 +322,8 @@ Nicht erlaubt:
 
 Bereits beschlossen:
 
-- Markdown-first.
+- Markdown-first,
+- Actual-/Desired-Perspektive muss im Output nachvollziehbar bleiben.
 
 Später vorgesehen:
 
@@ -279,4 +331,4 @@ Später vorgesehen:
 - PDF,
 - ggf. weitere Publishing-Ziele nach separater Architekturentscheidung.
 
-Die fachliche Dokumentstruktur soll unabhängig vom finalen Ausgabeformat bleiben. Dafür ist langfristig ein internes Document View Model sinnvoll; dessen konkrete technische Ausgestaltung ist noch offen.
+Die fachliche Dokumentstruktur soll unabhängig vom finalen Ausgabeformat bleiben. Dafür ist langfristig ein internes Document View Model vorgesehen; dessen konkrete technische Ausgestaltung ist noch offen.
