@@ -2,7 +2,7 @@
 
 Zentrale Engine zur Generierung standardisierter technischer Kundendokumentationen aus validierten Collector- und IaC-Daten.
 
-> **Projektstatus:** Initialisierung / Architekturrahmen konsolidiert. Der providerunabhängige Canonical Infrastructure Core ist fachlich beschlossen; Bicep/IaC ist als initiale Desired-State-Quelle eingeplant; die eigentliche fachliche Engine ist noch nicht implementiert.
+> **Projektstatus:** Initialisierung / Architekturrahmen konsolidiert. Der providerunabhängige Canonical Infrastructure Core ist fachlich beschlossen; Bicep/IaC ist als initiale Desired-State-Quelle eingeplant; ein rendererunabhängiges Document View Model ist als kanonischer Dokumentvertrag beschlossen; die eigentliche fachliche Engine ist noch nicht implementiert.
 >
 > **Logische Einordnung im Gesamtprojekt:** `00-Platform / DocumentationEngine`
 >
@@ -19,7 +19,7 @@ Die `DocumentationEngine` verarbeitet normalisierte und validierte technische Qu
 - Architekturdiagramme,
 - später Desired-vs-Actual-/Drift-Sichten.
 
-Initiales Dokumentausgabeformat ist **Markdown**. **PDF** und **DOCX** sind spätere Erweiterungen.
+Der kanonische Dokumentvertrag ist ein **rendererunabhängiges Document View Model**. **Markdown** ist der erste produktive Renderer. **DOCX** und **PDF** werden später als weitere Renderer desselben Document View Models umgesetzt.
 
 ## Zwei technische Perspektiven
 
@@ -69,8 +69,13 @@ Canonical Infrastructure Model
        v
 Semantic View Builder
        |
-       v
-DocumentationEngine Renderer
+       +--> Diagram View Model --> Diagram Renderer
+       |
+       `--> Document View Model
+                 |
+                 +--> Markdown Renderer
+                 +--> DOCX Renderer
+                 `--> PDF/HTML Renderer
        |
        v
 Dokumentationsartefakte
@@ -85,6 +90,8 @@ Die `DocumentationEngine` ist zentrale Plattformlogik. Sie gehört nicht in einz
 
 **Verbindliche Trennlinie Desired State:** Für IaC-verwaltete Workloads wird Bicep von Beginn an als First-Class-Desired-State-Quelle eingeplant. Details: [`docs/IAC_BICEP_INTERFACE.md`](docs/IAC_BICEP_INTERFACE.md).
 
+**Verbindliche Trennlinie Dokumentoutput:** Markdown, DOCX und PDF sind Renderer desselben strukturierten Document View Models. Markdown ist nicht die kanonische Dokument-Source-of-Truth. Details: [`docs/architecture/DOCUMENT_VIEW_MODEL.md`](docs/architecture/DOCUMENT_VIEW_MODEL.md).
+
 ## Bereits beschlossene Randbedingungen
 
 - Zentrale Einordnung unter `00-Platform`.
@@ -95,8 +102,10 @@ Die `DocumentationEngine` ist zentrale Plattformlogik. Sie gehört nicht in einz
 - Vorgelagerte Schema-, Sicherheits-, Contract- und Quality-Gates arbeiten fail-closed.
 - Zentrale Pipeline-Integration erfolgt über `PipelineTemplates`.
 - Gemeinsame technische Komponenten werden erst bei belegter Wiederverwendung nach `SharedModules` ausgelagert.
-- Initialer Dokumentationsoutput ist Markdown.
-- PDF und DOCX folgen später.
+- Das rendererunabhängige Document View Model ist der kanonische Dokumentvertrag.
+- Markdown ist der erste produktive Renderer.
+- PDF und DOCX folgen als weitere Renderer desselben Document View Models.
+- Eine dauerhafte Produktionsarchitektur `Markdown -> DOCX/PDF` ist nicht vorgesehen.
 - Azure-Diagramme verwenden offizielle Microsoft Azure Architecture Icons.
 - Offizielle Hersteller-Icons dürfen nicht willkürlich verzerrt, gespiegelt, gedreht oder umgefärbt werden.
 - Dokumentationsbuilds müssen reproduzierbar und automatisiert testbar werden.
@@ -140,14 +149,18 @@ Canonical Infrastructure Model
         v
 Semantic View Builder
         |
-        v
-Document / Diagram View Models
+        +--> Diagram View Model
         |
-        v
-Renderer
+        `--> Document View Model
+               |
+               +--> Markdown
+               +--> DOCX
+               `--> PDF
 ```
 
 Details und DE-WC-01-Gate: [`docs/architecture/CANONICAL_MODEL.md`](docs/architecture/CANONICAL_MODEL.md).
+
+Der Dokumentvertrag ist in [`docs/architecture/DOCUMENT_VIEW_MODEL.md`](docs/architecture/DOCUMENT_VIEW_MODEL.md) definiert.
 
 Für Azure bleibt nur der **produktive Actual-State-Adapter** vom stabilisierten P9-Relationship-Schema des `AzureInfrastructureCollector` abhängig. Der Bicep Desired-State Adapter ist kein P9-Blocker.
 
@@ -178,18 +191,19 @@ Secret-Werte dürfen nicht in Canonical Graph, Evidence, Logs oder Dokumentartef
 - konkreter gemeinsamer Input-Contract und physische Paketstruktur,
 - technische Repräsentation/Serialisierung und Versionierung des Canonical Core,
 - konkrete technische Bicep-Parserstrategie,
-- internes Document View Model,
+- technische Repräsentation/Serialisierung und Versionierung des Document View Models,
 - internes Diagram View Model,
 - Reconciliation-/Diff-Result-Model,
 - Template Engine,
-- konkrete Renderer-Technologie,
+- konkrete Markdown-Renderer-Implementierung,
+- konkrete DOCX-Renderer-Technologie,
+- konkrete PDF-/HTML-Renderer-Technologie,
 - konkretes Diagrammformat,
 - Layoutverfahren/Layoutbibliothek,
 - CLI/API der Engine,
 - konkrete Pipeline-Parameter und Artefaktübergabe,
 - Abgrenzung eigener Validierungen gegenüber `SecurityValidation`,
 - konkrete SharedModules-Nutzung,
-- PDF-/DOCX-Exportwerkzeuge,
 - Knowledge-Base-/Publishing-Technologie.
 
 ## Angrenzende Repositories / Systeme
@@ -212,6 +226,7 @@ Secret-Werte dürfen nicht in Canonical Graph, Evidence, Logs oder Dokumentartef
 - [`docs/COLLECTOR_INTERFACE.md`](docs/COLLECTOR_INTERFACE.md) – Actual-State-Collector-Grenze.
 - [`docs/IAC_BICEP_INTERFACE.md`](docs/IAC_BICEP_INTERFACE.md) – Bicep/IaC-Desired-State-Grenze.
 - [`docs/architecture/CANONICAL_MODEL.md`](docs/architecture/CANONICAL_MODEL.md) – providerunabhängiger perspektivfähiger Core-Contract.
+- [`docs/architecture/DOCUMENT_VIEW_MODEL.md`](docs/architecture/DOCUMENT_VIEW_MODEL.md) – rendererunabhängiger kanonischer Dokumentvertrag und Renderer-Grenze.
 - [`docs/TECHNICIAN_DOCUMENTATION_STANDARD.md`](docs/TECHNICIAN_DOCUMENTATION_STANDARD.md) – technikerorientierter Dokumentationsstandard.
 - [`docs/DIAGRAM_ENGINE_STANDARD.md`](docs/DIAGRAM_ENGINE_STANDARD.md) – Diagrammstandard und fünf Standard-Views.
 - [`docs/PROTOTYPE_FINDINGS.md`](docs/PROTOTYPE_FINDINGS.md) – Prototyperkenntnisse und Fehlerregressionen.
