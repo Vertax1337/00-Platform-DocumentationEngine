@@ -7,19 +7,20 @@ Status: **BESCHLOSSENER Core-Contract für DE-WC-01; Implementierung noch offen*
 
 Dieses Dokument definiert den providerunabhängigen Kernvertrag der `DocumentationEngine` für Infrastrukturknoten, Beziehungen, Evidenz und Datenabdeckung.
 
-Der Vertrag liegt bewusst **zwischen Provider-Adaptern und der semantischen View-Schicht**.
+Der Vertrag liegt bewusst **zwischen Source-/Provider-Adaptern und der semantischen View-Schicht**.
 
 ```text
-Provider-/Collector-Artefakte
+Collector-/IaC-Artefakte
         |
         v
-Provider Adapter
+Source / Provider Adapter
         |
         v
 Canonical Infrastructure Model
         |
         +--> Relationship Graph
         +--> Evidence / Coverage
+        +--> Graph Perspective
         |
         v
 Semantic View Builder
@@ -30,7 +31,9 @@ Semantic View Builder
 
 Der Core-Contract ist weder Azure-spezifisch noch Renderer-spezifisch. Er legt keine Programmiersprache, keine konkrete Serialisierung und keine Rendertechnologie fest.
 
-Für Azure gilt weiterhin die bestehende P9-Grenze: Das globale Modell darf jetzt definiert werden; der produktive Azure-Provider-Adapter und der endgültige Azure→DocumentationEngine-Relationship-Contract werden erst gegen das stabilisierte P9-Schema finalisiert.
+Für Azure-Actual-State gilt weiterhin die bestehende P9-Grenze: Das globale Modell darf jetzt definiert werden; der produktive Azure-Collector-Adapter und der endgültige Azure→DocumentationEngine-Relationship-Contract werden erst gegen das stabilisierte P9-Schema finalisiert.
+
+Für IaC-verwaltete Workloads wird Bicep dagegen von Beginn an als **First-Class-Desired-State-Quelle** eingeplant. Details: [`../IAC_BICEP_INTERFACE.md`](../IAC_BICEP_INTERFACE.md).
 
 ---
 
@@ -40,13 +43,13 @@ Für Azure gilt weiterhin die bestehende P9-Grenze: Das globale Modell darf jetz
 
 Das globale Modell darf keine Azure-Ressourcentypen als universelle Semantik voraussetzen.
 
-Provider-spezifische Typen bleiben als Herkunftsinformation erhalten und werden durch Provider-Adapter auf eine kanonische Semantik abgebildet.
+Provider-spezifische Typen bleiben als Herkunftsinformation erhalten und werden durch Adapter auf eine kanonische Semantik abgebildet.
 
 Beispiel:
 
 ```text
 Microsoft.Compute/virtualMachines
-        -> Azure Adapter
+        -> Azure Actual-State Adapter oder Bicep Desired-State Adapter
         -> kind = compute
 ```
 
@@ -54,7 +57,7 @@ Eine spätere Hyper-V-VM kann ebenfalls auf `kind = compute` abgebildet werden, 
 
 ### DE-CAN-002 – Stabile technische IDs vor Anzeigenamen
 
-Relationships, Deduplizierung und Korrelation verwenden stabile technische IDs bzw. daraus deterministisch erzeugte kanonische IDs.
+Relationships, Deduplizierung und spätere Korrelation verwenden stabile technische IDs bzw. daraus deterministisch erzeugte kanonische IDs.
 
 Friendly Names und Display Names sind Präsentationsdaten und dürfen keine alleinige Beziehungsgrundlage bilden.
 
@@ -90,18 +93,43 @@ Das Canonical Infrastructure Model enthält belegte Infrastruktur- und Serviceob
 
 ### DE-CAN-006 – Renderer bleibt infrastrukturfrei
 
-Der Renderer interpretiert keine Azure-, OPNsense- oder sonstige Providerlogik. Providerwissen endet spätestens am Provider-Adapter beziehungsweise Semantic View Builder.
+Der Renderer interpretiert keine Azure-, Bicep-, OPNsense- oder sonstige Source-/Providerlogik. Source-/Providerwissen endet spätestens am Adapter beziehungsweise Semantic View Builder.
+
+### DE-CAN-007 – Actual und Desired werden nicht stillschweigend vermischt
+
+Jeder Canonical Graph besitzt genau eine explizite Perspektive.
+
+Initiale Perspektiven:
+
+```text
+actual
+desiredTemplate
+desiredDeployment
+```
+
+Ein Graph mit `actual` beschreibt belegten Iststand. Ein Graph mit `desiredTemplate` oder `desiredDeployment` beschreibt deklarierte bzw. deploymentbezogene IaC-Sollinformation.
+
+Actual- und Desired-Nodes werden nicht allein aufgrund gleicher Namen zusammengeführt. Eine spätere Desired-vs-Actual-Reconciliation ist eine explizite Transformation mit eigenem Vertrag.
 
 ---
 
-## 3. Kernobjekte
+## 3. Kernobjekte und Graph-Envelope
 
-DE-WC-01 definiert vier verpflichtende Kernobjekte:
+DE-WC-01 definiert vier verpflichtende First-Class-Kernobjekte:
 
 1. `InfrastructureNode`
 2. `Relationship`
 3. `EvidenceReference`
 4. `CoverageRecord`
+
+Zusätzlich besitzt der Canonical Graph einen verpflichtenden Envelope mit mindestens:
+
+- `perspective`,
+- Build-/Graph-Identität,
+- Modell-/Contract-Version,
+- Source-Set-/Input-Referenzen, soweit technisch erforderlich.
+
+Der Envelope ist keine fünfte Infrastrukturressource, sondern Kontext des Graphen.
 
 Ein separates renderer-spezifisches Diagrammobjekt gehört ausdrücklich **nicht** zu DE-WC-01.
 
@@ -109,7 +137,7 @@ Ein separates renderer-spezifisches Diagrammobjekt gehört ausdrücklich **nicht
 
 ## 4. InfrastructureNode
 
-Ein `InfrastructureNode` repräsentiert ein durch Input belegtes technisches Objekt.
+Ein `InfrastructureNode` repräsentiert ein durch Input belegtes technisches Objekt innerhalb genau einer Graph-Perspektive.
 
 ### 4.1 Pflichtfelder
 
@@ -133,6 +161,8 @@ Ein `InfrastructureNode` repräsentiert ein durch Input belegtes technisches Obj
 | `sourceIds[]` | stabile technische Ursprungs-IDs, soweit zusätzlich erforderlich |
 
 Provider-spezifische Detailfelder dürfen in `properties` erhalten bleiben. Sie dürfen jedoch nicht als globale Core-Semantik ausgegeben werden, wenn keine providerübergreifende Bedeutung beschlossen wurde.
+
+Desired-State-spezifische technische Metadaten wie `declared`, `conditional`, `enabled`, `disabled` oder `unresolved` dürfen als klar gekennzeichnete Desired-State-Eigenschaften erhalten bleiben. Sie sind keine Actual-State-Behauptung.
 
 ### 4.3 Initiale kanonische `kind`-Klassen
 
@@ -162,7 +192,7 @@ device
 other
 ```
 
-`other` ist zulässig, wenn ein belegtes Providerobjekt noch keiner globalen Klasse sinnvoll zugeordnet werden kann. In diesem Fall bleibt `providerType` verpflichtend erhalten.
+`other` ist zulässig, wenn ein belegtes Source-/Providerobjekt noch keiner globalen Klasse sinnvoll zugeordnet werden kann. In diesem Fall bleibt `providerType` verpflichtend erhalten.
 
 Die Liste ist versioniert erweiterbar. Neue Klassen werden nicht ad hoc in einzelnen Adaptern erfunden, sondern zentral registriert.
 
@@ -178,7 +208,7 @@ Semantische Diagrammzonen wie `Connectivity`, `Workloads` oder `Operations` sind
 
 ## 5. Relationship
 
-Ein `Relationship` verbindet zwei vorhandene `InfrastructureNode`-Objekte.
+Ein `Relationship` verbindet zwei vorhandene `InfrastructureNode`-Objekte innerhalb desselben Canonical Graphs.
 
 ### 5.1 Pflichtfelder
 
@@ -223,19 +253,20 @@ exposes
 manages
 ```
 
-Die Liste bildet fachliche Semantik ab und ist kein 1:1-Abbild der Relationship-Namen eines bestimmten Collectors.
+Die Liste bildet fachliche Semantik ab und ist kein 1:1-Abbild der Relationship-Namen eines bestimmten Collectors oder IaC-Werkzeugs.
 
 Beispiele:
 
 ```text
-Azure: UsesNetworkInterface
+Azure Collector: UsesNetworkInterface
     -> canonical: uses
 
-Azure: BackedByVm
+Azure Collector: BackedByVm
     -> canonical: backedBy
 
-Azure: ProtectsResource
-    -> canonical: protects
+Bicep/ARM: symbolische Resource Reference
+    -> canonical: uses / dependsOn / attachedTo
+       abhängig von der fachlich definierten Property-Semantik
 ```
 
 Provider-spezifische Semantik bleibt über `providerRelationshipType` erhalten.
@@ -256,7 +287,7 @@ Nicht zulässig sind Relationships, die ausschließlich entstehen aus:
 - räumlicher Nähe im Diagramm,
 - generativer KI-Inferenz.
 
-Eine deterministische Ableitung aus einer stabilen Resource-ID, einem expliziten Foreign Key oder einer gleichwertigen maschinenauflösbaren Referenz ist zulässig und muss als `deterministicDerivation` markiert werden.
+Eine deterministische Ableitung aus einer stabilen Resource-ID, einem expliziten Foreign Key, einer Bicep-/ARM-Resource-Reference oder einer gleichwertigen maschinenauflösbaren Referenz ist zulässig und muss als `deterministicDerivation` markiert werden.
 
 ---
 
@@ -269,7 +300,7 @@ Eine deterministische Ableitung aus einer stabilen Resource-ID, einem expliziten
 | Feld | Bedeutung |
 |---|---|
 | `id` | eindeutige Evidence-ID innerhalb des Builds |
-| `sourceType` | Collector/Artefakt-/Konfigurationsklasse |
+| `sourceType` | Collector/IaC/Artefakt-/Konfigurationsklasse |
 | `sourceProvider` | Provider bzw. Quellsystem |
 | `snapshotId` | Snapshot-/Erfassungs-/Build-Identität |
 | `artifact` | logischer Artefaktname oder Artefaktpfad |
@@ -281,17 +312,23 @@ Eine deterministische Ableitung aus einer stabilen Resource-ID, einem expliziten
 | `collector` | Collector-Kennung und Version, soweit vorhanden |
 | `sourceObjectId` | stabile Quellobjekt-ID |
 | `sourceRelationshipId` | stabile Quellbeziehungs-ID |
-| `path` | maschinenlesbarer Pfad/JSON-Pointer zum Ursprungsobjekt |
-| `capturedAt` | Erfassungszeitpunkt, falls geliefert |
+| `path` | maschinenlesbarer Pfad/JSON-Pointer/Source-Span zum Ursprungsobjekt |
+| `capturedAt` | Erfassungs- bzw. Buildzeitpunkt, falls geliefert |
 | `derivation` | dokumentierte deterministische Ableitungsregel |
+| `repository` | logische Source-Repository-Kennung bei versionierten IaC-/Konfigurationsquellen |
+| `commit` | immutable Source-Version, z. B. Git SHA |
+| `toolchain` | relevante Parser-/Compiler-/Build-Provenance |
+| `artifactHash` | Hash eines abgeleiteten Maschinenartefakts, soweit vorhanden |
 
 Evidence ist technische Provenance. Sie darf keine Secrets oder nicht freigegebenen RAW-Werte in Dokumentationsartefakte übernehmen.
+
+Für Bicep muss Evidence die IaC-Quelle auf einen konkreten versionierten Stand zurückführen können. Details stehen in `docs/IAC_BICEP_INTERFACE.md`.
 
 ---
 
 ## 7. CoverageRecord
 
-Ein `CoverageRecord` beschreibt, ob eine fachliche Domäne für einen Scope erhoben wurde.
+Ein `CoverageRecord` beschreibt, ob eine fachliche Domäne für einen Scope innerhalb der jeweiligen Perspektive abgedeckt wurde.
 
 ### 7.1 Pflichtfelder
 
@@ -317,11 +354,11 @@ unavailable
 
 Bedeutung:
 
-- `collected` – Domäne wurde für den angegebenen Scope fachlich erhoben.
+- `collected` – Domäne wurde für den angegebenen Scope fachlich erhoben bzw. für die konkrete Source-Perspektive vollständig verarbeitet.
 - `partial` – Domäne ist nur teilweise abgedeckt.
-- `notCollected` – Domäne war nicht Bestandteil der Erhebung.
+- `notCollected` – Domäne war nicht Bestandteil der Erhebung bzw. Source.
 - `notApplicable` – Domäne ist für den Scope fachlich nicht anwendbar.
-- `unavailable` – Domäne sollte erhoben werden, war technisch/vertraglich aber nicht verfügbar.
+- `unavailable` – Domäne sollte vorliegen, war technisch/vertraglich aber nicht verfügbar.
 
 `notCollected` und `unavailable` dürfen nicht in positive Infrastrukturbehauptungen übersetzt werden.
 
@@ -329,9 +366,10 @@ Bedeutung:
 
 ## 8. Canonical Graph
 
-Der Canonical Graph besteht aus:
+Der Canonical Graph besteht fachlich aus:
 
 ```text
+perspective
 nodes[]
 relationships[]
 evidence[]
@@ -388,59 +426,103 @@ Die physische Serialisierung darf andere technische Sortieranforderungen ergänz
 
 Diagrammzonen, Layoutpositionen, Iconpfade, Farben und Rendererattribute sind im Canonical Infrastructure Model unzulässig.
 
+### DE-CAN-VAL-008 – Perspektive ist Pflicht
+
+Jeder Graph muss genau eine bekannte Perspektive deklarieren.
+
+Ein Graph darf nicht gleichzeitig `actual` und `desired*` sein.
+
+### DE-CAN-VAL-009 – Kein implizites Desired/Actual-Merging
+
+Eine Adapter- oder Core-Transformation darf nicht stillschweigend Actual- und Desired-Objekte aufgrund von Namen oder visueller Ähnlichkeit zusammenführen.
+
+Eine spätere Korrelation muss über einen expliziten Reconciliation-Contract erfolgen.
+
 ---
 
-## 9. Provider-Adapter-Vertrag
+## 9. Source-/Provider-Adapter-Vertrag
 
-Ein Provider-Adapter ist verantwortlich für:
+Ein Source-/Provider-Adapter ist verantwortlich für:
 
-- Prüfung des erwarteten Provider-/Collector-Contracts,
+- Prüfung des erwarteten Input-Contracts,
+- Festlegung der passenden Graph-Perspektive,
 - deterministische ID-Bildung,
-- Mapping von Providerobjekten auf `InfrastructureNode`,
-- Mapping expliziter Provider-Relationships auf kanonische Relationships,
+- Mapping von Source-/Providerobjekten auf `InfrastructureNode`,
+- Mapping expliziter bzw. deterministisch ableitbarer Relationships auf kanonische Relationships,
 - Erhalt des ursprünglichen `providerType` und `providerRelationshipType`,
 - Erzeugung der Evidence-Referenzen,
 - Übernahme/Abbildung von Coverage,
 - Fail-Closed bei nicht auflösbaren Pflichtreferenzen.
 
-Ein Provider-Adapter darf **nicht**:
+Ein Adapter darf **nicht**:
 
 - typische Infrastruktur ergänzen,
 - Relationship-Fakten aus Anzeigenamen raten,
+- Actual und Desired ungeprüft zusammenführen,
 - View-/Layoutentscheidungen treffen,
 - Rendererattribute erzeugen.
 
-### 9.1 Azure-P9-Gate
+### 9.1 Azure-Actual-State-P9-Gate
 
-Für Azure dürfen vorhandene fachmodulspezifische Relationships für Fixtures und nichtproduktive Mappingtests verwendet werden.
+Für Azure dürfen vorhandene fachmodulspezifische Collector-Relationships für Fixtures und nichtproduktive Mappingtests verwendet werden.
 
-Der produktive Azure-Adapter bleibt jedoch blockiert, bis:
+Der produktive Azure-Actual-State-Adapter bleibt jedoch blockiert, bis:
 
 1. P9 im `AzureInfrastructureCollector` abgeschlossen ist,
 2. das P9-Schema stabilisiert und versioniert wurde,
 3. der Azure→DocumentationEngine-Contract dagegen geprüft wurde.
 
-### 9.2 Weitere Provider
+### 9.2 Bicep Desired-State Adapter
+
+Der Bicep Desired-State Adapter ist **kein P9-abhängiger Adapter**.
+
+Er wird als initialer IaC-Adapter eingeplant und bildet versionierte Bicep-/IaC-Fakten auf `desiredTemplate`- bzw. `desiredDeployment`-Graphen ab.
+
+Verbindliche Detailanforderungen: [`../IAC_BICEP_INTERFACE.md`](../IAC_BICEP_INTERFACE.md).
+
+### 9.3 Weitere Provider
 
 OPNsense, Hyper-V, Switch/Layer-2 und spätere Provider verwenden denselben Core-Contract. Provider-spezifische Erweiterungen bleiben im Adapter bzw. in `properties`, sofern keine globale Semantik beschlossen ist.
 
 ---
 
-## 10. Bicep / Desired State
+## 10. Actual State, Desired State und Reconciliation
 
-Bicep ist im bisherigen produktiven Collector-Pfad **keine beschlossene primäre Iststandsquelle** der DocumentationEngine.
+### 10.1 Actual State
 
-Für eine spätere Erweiterung ist jedoch folgende saubere Integrationsgrenze vorgesehen:
+Produktive Azure-Iststandsdokumentation verwendet weiterhin freigegebene Collector-Artefakte und später den P9-basierten Azure-Actual-State-Adapter.
 
 ```text
-Bicep / kompiliertes ARM
-        -> eigener Desired-State-Adapter
-        -> Canonical Model oder vergleichbares versioniertes Desired-State-Modell
+AzureInfrastructureCollector
+        -> Azure Actual-State Adapter
+        -> Canonical Graph [actual]
 ```
 
-Eine spätere Desired-vs-Actual-Diff-Funktion darf erst als eigene Architekturentscheidung eingeführt werden.
+### 10.2 Desired State aus Bicep
 
-DE-WC-01 implementiert keinen Bicep-Adapter und ändert nicht die bestehende Regel, dass produktive Kundendokumentation des Azure-Iststands aus freigegebenen Collector-Artefakten entsteht.
+Für IaC-verwaltete Workloads ist Bicep von Beginn an als gewünschte Architekturquelle eingeplant.
+
+```text
+Bicep / deterministisches IaC-Artefakt
+        -> Bicep Desired-State Adapter
+        -> Canonical Graph [desiredTemplate|desiredDeployment]
+```
+
+Bicep ersetzt nicht den Collector als Iststandsbeweis. Der Collector ersetzt nicht Bicep als versionierten IaC-Sollvertrag.
+
+### 10.3 Reconciliation
+
+Desired-vs-Actual wird als eigener Contract eingeplant:
+
+```text
+Canonical Graph [actual]
+        +
+Canonical Graph [desiredDeployment]
+        -> Reconciliation
+        -> Match / Missing / Unmanaged / Unresolved / belastbare Drift
+```
+
+Name-only Matching ist verboten. Der Reconciliation-Output gehört nicht ungeprüft zurück in einen Canonical Graph und darf keine nicht belegte Infrastruktur erfinden.
 
 ---
 
@@ -450,12 +532,14 @@ Die spätere Core-Implementierung muss mindestens folgende automatisierte Contra
 
 ### 11.1 Positive Fixtures
 
-- minimaler Graph mit zwei Nodes und einer Relationship,
+- minimaler `actual`-Graph mit zwei Nodes und einer Relationship,
+- minimaler `desiredTemplate`-Graph mit Bicep-/IaC-Evidence,
 - mehrere Scopes mit `contains`,
 - Providerobjekt mit `kind = other` und erhaltenem `providerType`,
 - direkte Relationship mit Evidence,
 - deterministisch abgeleitete Relationship aus stabiler technischer Referenz,
-- Coverage für `collected`, `partial`, `notCollected`, `notApplicable`, `unavailable`.
+- Coverage für `collected`, `partial`, `notCollected`, `notApplicable`, `unavailable`,
+- gleiche kanonische Semantik aus mindestens zwei unterschiedlichen Source-/Provider-Namensräumen.
 
 ### 11.2 Negative Fixtures / Fail Closed
 
@@ -469,15 +553,19 @@ Die spätere Core-Implementierung muss mindestens folgende automatisierte Contra
 - unbekannter nicht registrierter `kind`,
 - widersprüchliche Coverage,
 - Relationship nur aus Namensheuristik,
-- Semantic-View-/Layoutattribute im Canonical Core.
+- Semantic-View-/Layoutattribute im Canonical Core,
+- fehlende oder unbekannte Graph-Perspektive,
+- Versuch, Actual- und Desired-Objekte implizit zu einem Graph zu mischen.
 
 ### 11.3 Determinismus
 
 Gleiche fachliche Inputs in unterschiedlicher Eingabereihenfolge müssen denselben kanonisch sortierten Graph erzeugen.
 
-### 11.4 Providerunabhängigkeit
+### 11.4 Provider-/Source-Unabhängigkeit
 
-Mindestens eine synthetische zweite Provider-Fixture muss beweisen, dass Core-Validierung und Relationship-Semantik keine Azure-spezifischen Typnamen voraussetzen.
+Mindestens zwei unterschiedliche Source-/Provider-Fixtures müssen beweisen, dass Core-Validierung und Relationship-Semantik keine Azure-Collector-spezifischen Typnamen voraussetzen.
+
+Ein Bicep-Desired-State-Fixture darf hierfür ausdrücklich als zweite Source-Klasse verwendet werden.
 
 ### 11.5 No-Invention-Regression
 
@@ -485,20 +573,30 @@ Für jeden ausgegebenen Node und jede Relationship muss eine Evidence-Kette vorh
 
 Ein Test muss explizit verhindern, dass typische Referenzarchitektur-Komponenten ohne Quellbeleg in den Canonical Graph gelangen.
 
+### 11.6 Perspektivtreue
+
+Tests müssen beweisen:
+
+- `actual` wird nicht als Desired State umgedeutet,
+- Bicep `desiredTemplate` wird nicht als gemessener Iststand ausgegeben,
+- nicht aufgelöste Conditions werden nicht als aktiv geraten,
+- Reconciliation ist keine implizite Core-Funktion.
+
 ---
 
 ## 12. DE-WC-01 – Umsetzung und Gate
 
 ### Ziel
 
-Den in diesem Dokument spezifizierten providerunabhängigen Core-Contract als stabile Grundlage für alle späteren Adapter, Semantic Views und Renderer festlegen.
+Den in diesem Dokument spezifizierten providerunabhängigen, perspektivfähigen Core-Contract als stabile Grundlage für Collector-, IaC-, Semantic-View- und Renderer-Workchunks technisch implementierbar festlegen.
 
 ### Nicht Bestandteil
 
 - finale Input-Paket-/Dateistruktur,
-- produktiver Azure-P9-Adapter,
+- produktiver Azure-P9-Actual-State-Adapter,
+- vollständiger Bicep-Parser/Desired-State-Adapter,
 - OPNsense-Adapter,
-- Bicep-Adapter,
+- Desired-vs-Actual-Reconciliation-Implementierung,
 - Document View Model,
 - Diagram View Model,
 - Semantic View Builder Implementierung,
@@ -509,14 +607,18 @@ Den in diesem Dokument spezifizierten providerunabhängigen Core-Contract als st
 - Markdown/PDF/DOCX-Rendering,
 - PipelineTemplates-Integration.
 
+DE-WC-01 muss jedoch Graph-Perspektiven, IaC-Evidence und die spätere Bicep-Adapterfähigkeit bereits im Core technisch ermöglichen. Bicep darf nicht als nachträglicher Sonderweg eine inkompatible zweite Modellwelt benötigen.
+
 ### Geplante Repository-Grundstruktur nach Freigabe der Implementierung
 
-Die spätere physische Codebasis soll die bereits beschlossenen Verantwortungsgrenzen abbilden. Eine mögliche minimale Struktur ist:
+Die spätere physische Codebasis soll die beschlossenen Verantwortungsgrenzen abbilden. Eine mögliche minimale Struktur ist:
 
 ```text
 contracts/
   canonical/
   providers/
+  sources/
+    bicep/
 
 src/
   core/
@@ -525,7 +627,9 @@ src/
     coverage/
     validation/
   adapters/
+    bicep/
   semantic/
+  reconciliation/
   diagrams/
   documents/
 
@@ -533,6 +637,7 @@ tests/
   unit/
   contracts/
   fixtures/
+    bicep/
   golden/
 ```
 
@@ -544,11 +649,14 @@ DE-WC-01 darf erst als technisch `IMPLEMENTIERT` gelten, wenn:
 
 - der Core-Contract im Repository versioniert ist,
 - Node-/Relationship-/Evidence-/Coverage-Modelle technisch repräsentiert sind,
+- der Graph-Envelope eine validierte Perspektive trägt,
 - alle Core-Invarianten automatisiert validiert werden,
 - positive und negative Contract-Fixtures vorhanden sind,
 - Determinismus nachgewiesen ist,
-- Providerunabhängigkeit durch mindestens zwei Provider-Namensräume nachgewiesen ist,
+- Provider-/Source-Unabhängigkeit nachgewiesen ist,
+- mindestens ein Bicep-/Desired-State-Core-Fixture ohne Sondermodell validiert wird,
 - No-Invention-/Evidence-Gates fail-closed sind,
+- Actual und Desired nicht implizit vermischt werden können,
 - keine Azure-P9-Abhängigkeit in den globalen Core eingeschleust wurde,
 - keine Renderer-/Layouttechnologie vorgezogen wurde,
 - Fachdokumentation und kanonischer Umsetzungsplan denselben bestätigten Status enthalten.
@@ -564,13 +672,17 @@ Nach DE-WC-01 folgen fachlich:
 1. **DE-WC-02 – Semantic View Contracts**
    - providerunabhängige View-Anforderungen,
    - fünf Standard-View-Typen,
+   - Perspektivvertrag für `actual`, `desiredTemplate`, `desiredDeployment` und später `reconciled`,
    - klare Trennung Infrastrukturgraph vs. Präsentationsgruppen.
-2. **DE-WC-03 – Provider-Adapter-Prototypen**
-   - nichtproduktives Azure-Mapping gegen vorhandene Fixture-Daten,
-   - produktiver Azure-Adapter weiterhin P9-gegated,
+2. **DE-WC-03 – Initiale Source-/Provider-Adapter**
+   - Bicep Desired-State Adapter als initialer produktnaher IaC-Adapter,
+   - nichtproduktives Azure-Actual-State-Mapping gegen vorhandene Fixture-Daten,
+   - produktiver Azure-Actual-State-Adapter weiterhin P9-gegated,
    - OPNsense-Vertrag nach Sichtung.
-3. **später: Desired-State/Bicep-Adapter**
-   - nur nach eigener Architekturentscheidung,
-   - kein Bestandteil des initialen Iststandscontracts.
+3. **DE-WC-04 – Desired/Actual Reconciliation Contract**
+   - stabile Korrelationsschlüssel,
+   - Match-/Missing-/Unmanaged-/Unresolved-Zustände,
+   - Evidence auf beiden Seiten,
+   - keine Name-only-Korrelation.
 
-Renderer- und Layoutauswahl erfolgen erst, wenn Canonical Model und Diagram View Model stabil genug sind, um die Technologie anhand eines echten Contracts zu bewerten.
+Renderer- und Layoutauswahl erfolgen erst, wenn Canonical Model und Diagram View Model stabil genug sind, um die Technologie anhand eines echten Contracts zu bewerten. Bicep kann dabei bereits vor Abschluss von Azure-P9 als reale Desired-State-Datenbasis für Prototypen und Contract-Tests dienen.
