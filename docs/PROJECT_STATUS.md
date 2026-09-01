@@ -16,16 +16,22 @@ Die `DocumentationEngine` ist zentrale Plattformlogik unter:
 
 Collector verbleiben unter `10-Automation`. Die Engine wird nicht pro Kunde oder Collector dupliziert.
 
+Aktuelles GitHub-Arbeitsrepository:
+
+```text
+Vertax1337/00-Platform-DocumentationEngine
+```
+
 ### 1.2 Zwei technische Perspektiven
 
 Die DocumentationEngine verarbeitet von Beginn an zwei unterschiedliche technische Wahrheiten:
 
 ```text
 Actual State
-  -> Collector-Artefakte
+  -> Collector-/Provider-Artefakte
 
 Desired State
-  -> Bicep / IaC-Artefakte
+  -> Bicep / IaC / freigegebene Desired-State-Artefakte
 ```
 
 Für Azure gilt:
@@ -40,17 +46,31 @@ Bicep / IaC
   -> Canonical Graph [desiredTemplate|desiredDeployment]
 ```
 
-Bicep ersetzt den Collector nicht als Iststandsbeweis. Der Collector ersetzt Bicep nicht als IaC-Source-of-Truth.
+Für Intune gilt:
+
+```text
+IntuneCD Backup aus CUST-*
+  -> belegter Iststand
+  -> Canonical Graph [actual]
+
+30-IDD / IntuneDefaultDeployment
+  -> freigegebener Sollstand
+  -> Canonical Graph [desiredDeployment]
+```
+
+Bicep ersetzt den Collector nicht als Iststandsbeweis. IntuneCD-Kundenbackups sind ebenfalls Actual State und werden nicht durch einen operativen Monitor-Baseline-Status zu Desired State.
 
 Actual und Desired werden nicht stillschweigend zusammengeführt. Eine spätere Reconciliation ist eine explizite Transformation.
 
-### 1.3 Collector-Grenze
+### 1.3 Collector-/Provider-Grenze
 
-Collector sind für quellspezifische Erfassung, Parsing und Normalisierung verantwortlich.
+Collector bzw. Provider-Producer sind für quellspezifische Erfassung, Parsing und Normalisierung verantwortlich.
 
-Die DocumentationEngine inventarisiert Azure nicht erneut live.
+Die DocumentationEngine inventarisiert Azure oder Intune nicht erneut live, wenn ein freigegebener Source-/Snapshot-Contract vorliegt.
 
 Für den produktiven Azure-Actual-State-Adapter bleibt das stabilisierte Collector-P9-Relationship-Schema Voraussetzung.
+
+Für Intune wird die native IntuneCD-Ausgabe über einen versionierten BSSE Intune Snapshot-/Provenance-Contract entkoppelt.
 
 ### 1.4 Bicep/IaC-Grenze
 
@@ -165,6 +185,30 @@ Details: `architecture/DOCUMENT_VIEW_MODEL.md`.
 - semantische Zonen und Progressive Disclosure,
 - Diagram View Model bleibt vom Document View Model getrennt; das DVM referenziert Diagrammartefakte als strukturierte Figures.
 
+### 1.10 IntuneCD / IDD Cross-Project- und Source-Contract
+
+Der plattformweite Ownership-/Provisionierungsvertrag wird im `PlatformBootstrap` geführt. Die DocumentationEngine hält ausschließlich ihren Consumer-/Adaptervertrag.
+
+Verbindlich:
+
+```text
+CUST-* / IntuneCD Backup
+→ BSSE Intune Snapshot Contract
+→ Intune Source Adapter
+→ Canonical Graph [actual]
+
+30-IDD / IntuneDefaultDeployment
+→ BSSE Intune Snapshot Contract
+→ Intune Source Adapter
+→ Canonical Graph [desiredDeployment]
+```
+
+Der Snapshot-/Provenance-Contract muss mindestens Customer-/Tenant-Identität, Snapshot-/Tool-/Commit-Provenance, Artefaktreferenzen/-integrität, Coverage sowie Validation-/Security-Status transportieren können.
+
+Native IntuneCD-Dateinamen oder Verzeichnisstrukturen sind nicht der Canonical Contract. Native IntuneCD Markdown-/HTML-Dokumentation ist keine Canonical Source of Truth. IntuneCD Compare kann provider-spezifische Evidence liefern, ersetzt aber nicht den providerunabhängigen Reconciliation-Contract.
+
+Details: `INTUNECD_INTERFACE.md`.
+
 ---
 
 ## 2. Bereits implementiert
@@ -179,12 +223,15 @@ Details: `architecture/DOCUMENT_VIEW_MODEL.md`.
 | Prototyp-Erkenntnis-/Fehlerdokument | implementiert |
 | Canonical-Infrastructure-Core-Fachspezifikation | implementiert |
 | Bicep/IaC-Desired-State-Fachspezifikation | implementiert |
+| IntuneCD-/IDD-Consumer-/Adapter-Fachspezifikation | implementiert (`docs/INTUNECD_INTERFACE.md`) |
 | Document-View-Model-Fachspezifikation | implementiert (`docs/architecture/DOCUMENT_VIEW_MODEL.md`) |
 | Actual-/Desired-Perspektivvertrag | fachlich dokumentiert |
+| Intune Snapshot-/Provenance-Semantik | fachlich dokumentiert; technische Serialisierung offen |
 | Technische Core-Modell-/Validator-Implementierung | **noch nicht implementiert** |
 | Technische Document-View-Model-Implementierung | **noch nicht implementiert** |
 | Bicep Desired-State Adapter | **noch nicht implementiert** |
 | Azure Actual-State Adapter auf P9 | **noch nicht implementiert** |
+| Intune Source Adapter | **noch nicht implementiert** |
 | Desired/Actual Reconciliation | **noch nicht implementiert** |
 | Semantic View Builder | **noch nicht implementiert** |
 | Markdown Renderer | **noch nicht implementiert** |
@@ -201,14 +248,17 @@ Wichtig: „Fachspezifikation implementiert“ bedeutet, dass der Contract im Re
 ### 3.1 PlatformBootstrap
 
 - provisioniert zentrale Plattform-/Kundenstrukturen,
-- DocumentationEngine implementiert keine eigene Kundenprovisionierung.
+- DocumentationEngine implementiert keine eigene Kundenprovisionierung,
+- hält den kanonischen Intune Cross-Project-Ownership-/Boundary-Vertrag,
+- für einen produktiv verwalteten Intune-Tenant ist ein eigener versionierter Repositorybereich in der `CUST-*`-Boundary beschlossen; exakte Benennung bleibt im Bootstrap-Vertrag offen.
 
 ### 3.2 PipelineTemplates
 
 Zentrale Orchestrierung bleibt beschlossen. Die konkrete Schnittstelle muss künftig sowohl:
 
 - Collector-Actual-State-Artefakte,
-- Bicep/IaC-Desired-State-Artefakte
+- Bicep/IaC-Desired-State-Artefakte,
+- Intune Snapshot-/Provenance-Artefakte
 
 reproduzierbar an die Engine übergeben können.
 
@@ -258,6 +308,15 @@ Technischer Contract noch offen.
 
 Die Engine erzeugt kundenspezifische Dokumentationsartefakte für `CUST-<Debitor>-<Name>`. `CUST-00000` bleibt Testkunde.
 
+Für Intune liegen kundenspezifische Actual-Snapshots in einem eigenen versionierten Repositorybereich innerhalb der `CUST-*`-Boundary; der konkrete Repositoryname ist noch offen.
+
+### 3.8 `30-IDD` / IntuneCD / IntuneCD Monitor
+
+- `30-IDD / IntuneDefaultDeployment` ist die freigegebene Desired-State-Quelle für Intune,
+- IntuneCD/Monitor ist die Provider-/Producer-Seite für Backup/Compare/kontrollierte Updates,
+- der operative Monitor-Datenbankstatus ist keine DocumentationEngine Source of Truth,
+- die Engine konsumiert ausschließlich den validierten Snapshot-/Provenance-Contract.
+
 ---
 
 ## 4. Noch offen
@@ -268,6 +327,8 @@ Die Engine erzeugt kundenspezifische Dokumentationsartefakte für `CUST-<Debitor
 - Schema-/Modellversionierung,
 - Bicep-Paket-/Toolchain-Contract finalisieren,
 - Azure-P9-Contract finalisieren,
+- technische Intune Snapshot-Serialisierung/Schema-Technologie,
+- konkrete Intune Source Adapter-Inputstruktur,
 - OPNsense-Contract,
 - SecurityValidation-Grenze,
 - PipelineTemplates-Artefaktvertrag,
@@ -288,6 +349,7 @@ Die Engine erzeugt kundenspezifische Dokumentationsartefakte für `CUST-<Debitor
 - Bicep Desired-State Adapter,
 - Azure Actual-State Adapter Prototype,
 - produktiver Azure Actual-State Adapter nach P9,
+- Intune Source Adapter / Fixtures nach DE-WC-03.1,
 - OPNsense Adapter.
 
 ### 4.4 Rendering
@@ -307,6 +369,7 @@ Die Engine erzeugt kundenspezifische Dokumentationsartefakte für `CUST-<Debitor
 
 - Unit-/Contract-Tests,
 - Bicep-Adapter-Tests,
+- Intune Snapshot-/Adapter-Tests,
 - Actual-/Desired-Perspektivtests,
 - DVM-Validierungs-/Golden-Master-Tests,
 - Reconciliation-Tests,
@@ -353,7 +416,25 @@ Weiterhin offen: Azure DevOps/Wiki, SharePoint, Teams oder kombinierte Publishin
 
 - **Bicep Desired-State Adapter** als initialer produktnaher Adapter,
 - Azure Actual-State Prototype gegen vorhandene Fixtures,
-- produktiver Azure-Actual-State-Adapter weiterhin P9-gegated.
+- produktiver Azure-Actual-State-Adapter weiterhin P9-gegated,
+- Intune Source Adapter auf Basis des fachlich beschlossenen Snapshot-/Provenance-Contracts,
+- OPNsense nach Sichtung.
+
+### DE-WC-03.1 – Intune Source Adapter Contract / Fixtures
+
+**Fachlich beschlossen / technische Implementierung offen.**
+
+- mindestens ein validiertes IntuneCD-Actual-Fixture,
+- korrespondierender `desiredDeployment`-Fixture aus `IntuneDefaultDeployment`,
+- Snapshot-/Provenance-Metadaten erhalten,
+- stabile Source Object IDs,
+- mindestens eine belegte Assignment-Relationship,
+- Coverage für nicht erhobene Domänen,
+- keine native Markdown-Dokumentation als Input,
+- keine Name-only-Korrelation,
+- keine implizite Reconciliation im Adapter.
+
+Details: `INTUNECD_INTERFACE.md`.
 
 ### DE-WC-04 – Desired/Actual Reconciliation Contract
 
