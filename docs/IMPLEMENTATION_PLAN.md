@@ -69,7 +69,7 @@ Der kanonische Dokumentvertrag ist ein rendererunabhängiges `Document View Mode
 
 Die `DocumentationEngine` ist zentrale Plattformlogik im Azure-DevOps-Projekt `00-Platform` und wird nicht pro Kunde oder Collector dupliziert.
 
-Der aktuelle GitHub-Arbeitsrepositoryname `Vertax1337/10-DocumentationEngine` ändert diese Zielzuordnung nicht.
+Aktuelles GitHub-Arbeitsrepository: `Vertax1337/00-Platform-DocumentationEngine`.
 
 ### DE-DEC-002 – Repository-Provisionierung
 
@@ -239,6 +239,42 @@ Das DVM wird von Beginn an ausreichend strukturiert ausgelegt, um professionelle
 
 Verbindliche Fachspezifikation: [`docs/architecture/DOCUMENT_VIEW_MODEL.md`](architecture/DOCUMENT_VIEW_MODEL.md).
 
+### DE-DEC-018 – IntuneCD / IDD über versionierten Snapshot-/Provenance-Contract
+
+**Status:** BESCHLOSSEN / technische Implementierung offen
+
+Intune wird als weitere provider-spezifische Quelle über einen klaren Cross-Project-Contract integriert.
+
+Verbindlich gilt:
+
+```text
+CUST-* / IntuneCD Backup
+  -> BSSE Intune Snapshot Contract
+  -> Intune Source Adapter
+  -> Canonical Graph [actual]
+
+30-IDD / IntuneDefaultDeployment
+  -> BSSE Intune Snapshot Contract
+  -> Intune Source Adapter
+  -> Canonical Graph [desiredDeployment]
+```
+
+Der Snapshot-/Provenance-Contract kapselt die native IntuneCD-Ausgabe. Die DocumentationEngine wird nicht direkt an zufällige Dateinamen, Verzeichnisstrukturen oder eine konkrete IntuneCD-Version gekoppelt.
+
+Verbindlich sind:
+
+- CustomerNumber und Microsoft Entra Tenant ID als stabile Zuordnungsidentitäten,
+- Snapshot-/Tool-/Repository-/Commit-Provenance,
+- Artefaktreferenzen und Integritätsnachweise,
+- Coverage für erhobene/nicht erhobene Domänen,
+- stabile Provider-/Graph-Objekt-IDs statt Name-only-Korrelation,
+- native IntuneCD-Dokumentation ist keine Canonical Source of Truth,
+- IntuneCD Compare ist provider-spezifische Evidence-/Vergleichshilfe und ersetzt nicht den Reconciliation-Contract.
+
+Die konkrete technische Snapshot-Serialisierung und Adapterimplementierung bleiben offen.
+
+Verbindliche DocumentationEngine-Schnittstelle: [`docs/INTUNECD_INTERFACE.md`](INTUNECD_INTERFACE.md).
+
 ---
 
 ## 4. Externe Abhängigkeiten und Schnittstellen
@@ -251,7 +287,9 @@ Verbindliche Fachspezifikation: [`docs/architecture/DOCUMENT_VIEW_MODEL.md`](arc
 - Nutzung provisionierter `CUST-*`-Strukturen,
 - keine Duplizierung der Bootstrap-Logik.
 
-Offen: konkrete Repository-/Pfad-/Metadatenübergabe.
+Für Intune ist die Cross-Project-Ownership im PlatformBootstrap-Vertrag `docs/Intune-Cross-Project-Contract.md` definiert. Die DocumentationEngine besitzt nur die Consumer-/Canonical-Semantik.
+
+Offen: konkrete technische Repository-/Pfad-/Metadatenübergabe.
 
 ### 4.2 PipelineTemplates
 
@@ -267,7 +305,7 @@ Zu definieren:
 - Logging-/Fehlervertrag,
 - Versionierung.
 
-Dabei müssen sowohl Collector-Actual-State-Artefakte als auch IaC/Bicep-Desired-State-Artefakte über einen reproduzierbaren Buildvertrag übergeben werden können.
+Dabei müssen sowohl Collector-Actual-State-Artefakte als auch IaC/Bicep-Desired-State-Artefakte über einen reproduzierbaren Buildvertrag übergeben werden können. Der spätere Intune-Snapshot-Contract muss über denselben reproduzierbaren Artefakt-/Buildpfad integrierbar sein.
 
 ### 4.3 SecurityValidation
 
@@ -280,7 +318,7 @@ Zu definieren:
 - Fehlerklassen,
 - Fail-Closed-Grenzen.
 
-IaC-Evidence und sanitizte Deploymentkontexte dürfen keine Secret-Werte in Engine-Artefakte übernehmen.
+IaC-Evidence und sanitizte Deploymentkontexte dürfen keine Secret-Werte in Engine-Artefakte übernehmen. Für Intune muss der Snapshot-/Security-Contract nachweisen können, welche Provider-Artefakte validiert und sanitizt wurden.
 
 ### 4.4 SharedModules
 
@@ -354,9 +392,27 @@ Vorgesehene Bereiche:
 
 - `CustomerConfiguration`,
 - `Documentation`,
-- ggf. getrennte RAW-Repositories.
+- ggf. getrennte RAW-/Provider-Repositories.
+
+Für Intune ist beschlossen, dass ein produktiv verwalteter Tenant innerhalb der `CUST-*`-Boundary einen eigenen versionierten Repositorybereich bzw. ein eigenes Repository für den Iststand erhält. Der exakte Repositoryname bleibt extern im PlatformBootstrap-Contract offen.
 
 `CUST-00000` bleibt Testkunde.
+
+### 4.9 `30-IDD` / IntuneCD / IntuneCD Monitor
+
+**Status:** FACHLICHER CROSS-PROJECT-CONTRACT BESCHLOSSEN / technische Integration OFFEN
+
+```text
+IntuneCD Kundenbackup
+→ actual
+
+30-IDD / IntuneDefaultDeployment freigegebener Stand
+→ desiredDeployment
+```
+
+Die DocumentationEngine konsumiert den versionierten BSSE Intune Snapshot-/Provenance-Contract und nicht den operativen Monitor-Datenbankstatus als Source of Truth.
+
+Details: `INTUNECD_INTERFACE.md`.
 
 ---
 
@@ -364,7 +420,7 @@ Vorgesehene Bereiche:
 
 ### DE-OPEN-001 – Input-Contract
 
-**Status:** OFFEN
+**Status:** OFFEN / Intune-Semantik teilweise beschlossen
 
 Zu entscheiden:
 
@@ -375,7 +431,7 @@ Zu entscheiden:
 - optionale Datenquellen,
 - gemeinsamer Envelope für Collector- und IaC-Inputs.
 
-Die fachlichen Bicep-Mindestanforderungen sind bereits in `IAC_BICEP_INTERFACE.md` festgelegt.
+Die fachlichen Bicep-Mindestanforderungen sind bereits in `IAC_BICEP_INTERFACE.md` festgelegt. Für Intune sind die semantischen Mindestinformationen des Snapshot-/Provenance-Contracts in `INTUNECD_INTERFACE.md` beschlossen; konkrete Serialisierung/Schema-Technologie bleiben offen.
 
 ### DE-OPEN-002 – Internes Modell
 
@@ -486,7 +542,9 @@ Azure DevOps/Wiki, SharePoint, Teams oder kombinierte Publishing-Lösung. Keine 
 - [x] providerunabhängigen Diagramm-/Relationship-Bedarf spezifiziert.
 - [x] Bicep/IaC als initiale Desired-State-Quelle architektonisch eingeplant.
 - [x] rendererunabhängiges Document View Model als kanonischen Dokumentvertrag fachlich beschlossen.
+- [x] Intune Cross-Project-Ownership sowie DocumentationEngine Consumer-/Adaptergrenze fachlich beschlossen.
 - [ ] Bicep/IaC-Input-Paket fachlich/technisch finalisieren.
+- [ ] Intune Snapshot-/Provenance-Schema technisch finalisieren.
 - [ ] nach Collector-P9 vereinheitlichtes Azure-Relationship-Schema prüfen/versionieren.
 - [ ] produktiven Azure-Actual-State-Adapter finalisieren.
 - [ ] OPNsense-Output abgleichen.
@@ -496,7 +554,7 @@ Azure DevOps/Wiki, SharePoint, Teams oder kombinierte Publishing-Lösung. Keine 
 - [ ] Aufruf-/Artefaktvertrag mit `PipelineTemplates` festlegen.
 - [ ] erforderliche `CUST-*`-Metadaten festlegen.
 
-**Decision Gate:** Bicep-Desired-State-Adapter und globales Core-/View-Modell sind kein P9-Blocker. Nur der produktive Azure-Actual-State-Adapter bleibt P9-gegated.
+**Decision Gate:** Bicep-Desired-State-Adapter und globales Core-/View-Modell sind kein P9-Blocker. Nur der produktive Azure-Actual-State-Adapter bleibt P9-gegated. Der Intune-Contract ist ebenfalls kein P9-Blocker.
 
 ### Phase 2 – Internes Modell und Core Engine
 
@@ -513,6 +571,7 @@ Azure DevOps/Wiki, SharePoint, Teams oder kombinierte Publishing-Lösung. Keine 
 - [ ] Bicep Desired-State Adapter implementieren.
 - [ ] Azure Actual-State Fixture-/Prototype-Adapter implementieren.
 - [ ] produktiven Azure Actual-State Adapter nach P9 finalisieren.
+- [ ] Intune Source Adapter / Fixtures nach DE-WC-03.1 implementieren.
 - [ ] deterministische Sortierung/Referenzauflösung implementieren.
 - [ ] Coverage implementieren.
 - [ ] Fehler-/Loggingmodell implementieren.
@@ -582,8 +641,29 @@ Verbindlich:
 2. **Azure Actual-State Adapter Prototype** gegen vorhandene Collector-Fixtures.
 3. Produktive Azure-Actual-State-Finalisierung erst nach P9.
 4. OPNsense-Vertrag nach Sichtung.
+5. **Intune Source Adapter** auf Basis des beschlossenen Snapshot-/Provenance-Contracts; technische Priorisierung gegenüber den übrigen Adaptern bleibt separat steuerbar.
 
 Bicep ist hierbei ausdrücklich kein späterer Optional-Workchunk mehr.
+
+#### DE-WC-03.1 – Intune Source Adapter Contract / Fixtures
+
+**Status:** FACHLICH BESCHLOSSEN / TECHNISCHE IMPLEMENTIERUNG OFFEN
+
+Fachlicher Contract: [`docs/INTUNECD_INTERFACE.md`](INTUNECD_INTERFACE.md).
+
+Der erste technische Intune-Workchunk soll:
+
+- mindestens einen kleinen validierten IntuneCD-Actual-Fixture definieren,
+- mindestens einen korrespondierenden `desiredDeployment`-Fixture aus `IntuneDefaultDeployment` ermöglichen,
+- Snapshot-/Provenance-Metadaten vollständig erhalten,
+- stabile Source Object IDs verwenden,
+- mindestens eine explizit belegte Assignment-Relationship abbilden,
+- Coverage für nicht erhobene Domänen ausweisen,
+- keine native Markdown-Dokumentation parsen,
+- keine Name-only-Korrelation verwenden,
+- keine Reconciliation implizit im Adapter durchführen.
+
+Die konkrete Programmiersprache, Serialisierung und Parserstrategie bleiben durch diesen Workchunk unentschieden.
 
 #### DE-WC-04 – Desired/Actual Reconciliation Contract
 
@@ -644,6 +724,7 @@ Bicep ist hierbei ausdrücklich kein späterer Optional-Workchunk mehr.
 - [ ] notwendige SharedModules integrieren.
 - [ ] Collector-Actual-State-Artefakte standardisieren.
 - [ ] IaC/Bicep-Desired-State-Artefakte standardisieren.
+- [ ] Intune Snapshot-/Provenance-Artefakte standardisieren, sobald der technische Schema-Contract beschlossen ist.
 - [ ] Document-View-Model-/Renderer-Artefakte standardisieren.
 - [ ] Build-Artefakte standardisieren.
 - [ ] Fehlercodes/Logs standardisieren.
@@ -656,6 +737,7 @@ Bicep ist hierbei ausdrücklich kein späterer Optional-Workchunk mehr.
 - [ ] Unit Tests.
 - [ ] Schema-/Contract-Tests.
 - [ ] Bicep Adapter Contract Tests.
+- [ ] Intune Adapter / Snapshot Contract Tests.
 - [ ] Actual/Desired Perspective Tests.
 - [ ] DVM Contract-/Validation Tests.
 - [ ] Markdown Golden-Master Tests.
@@ -713,7 +795,7 @@ Die erste produktive Version gilt erst dann als abgeschlossen, wenn mindestens:
 - reproduzierbarer Build,
 - erfolgreicher E2E-Test mit `CUST-00000`.
 
-Eine vollständige Property-Level-Drift-Engine, produktive DOCX-/PDF-Renderer und finale Knowledge-Base-/Publishing-Lösung sind keine Voraussetzung der ersten produktiven Version. Ihre spätere Ableitung aus demselben DVM ist jedoch architektonisch bereits festgelegt.
+Eine vollständige Property-Level-Drift-Engine, produktive DOCX-/PDF-Renderer und finale Knowledge-Base-/Publishing-Lösung sind keine Voraussetzung der ersten produktiven Version. Der Intune-Adapter ist durch DE-DEC-018/DE-WC-03.1 fachlich vorbereitet, wird aber nicht allein durch diese Entscheidung zum Blocker der ersten produktiven DocumentationEngine-Version. Seine technische Priorisierung bleibt im Workchunk-Plan steuerbar.
 
 ---
 
@@ -738,7 +820,8 @@ Eine vollständige Property-Level-Drift-Engine, produktive DOCX-/PDF-Renderer un
 | DE-DEC-015 | Canonical Infrastructure Core | BESCHLOSSEN | Nodes, Relationships, Evidence, Coverage + Graph-Perspektive |
 | DE-DEC-016 | Bicep Desired State | BESCHLOSSEN | Bicep/IaC von Anfang an First-Class-Desired-State-Quelle |
 | DE-DEC-017 | Document View Model | BESCHLOSSEN | rendererunabhängiges DVM ist kanonischer Dokumentvertrag; Markdown/DOCX/PDF sind Renderer |
-| DE-OPEN-001 | Input-Contract | OFFEN | – |
+| DE-DEC-018 | IntuneCD / IDD Source Contract | BESCHLOSSEN | versionierter Snapshot-/Provenance-Contract; CUST-Backup=`actual`, freigegebenes `IntuneDefaultDeployment`=`desiredDeployment`; Consumervertrag in `INTUNECD_INTERFACE.md` |
+| DE-OPEN-001 | Input-Contract | OFFEN | physische/technische Gesamtstruktur offen; Intune-Semantik teilweise beschlossen |
 | DE-OPEN-002 | Internes Modell Rest | TEILWEISE OFFEN | technische Repräsentation/Versionierung von Core/DVM, Diagram-/Reconciliation-Modelle offen |
 | DE-OPEN-003 | Template Engine | OFFEN | – |
 | DE-OPEN-004 | Markdown Renderer | OFFEN | aus DVM |
@@ -752,6 +835,19 @@ Eine vollständige Property-Level-Drift-Engine, produktive DOCX-/PDF-Renderer un
 ---
 
 ## 9. Änderungsprotokoll
+
+### 2026-09-01 – IntuneCD / IDD Cross-Project- und Source-Contract beschlossen
+
+- PlatformBootstrap bleibt kanonischer Owner der projektübergreifenden Provisionierungs-/Ownership-Grenze,
+- DocumentationEngine besitzt ausschließlich Consumer-/Canonical-Semantik,
+- IntuneCD-Kundenbackup als `actual` und freigegebener `30-IDD/IntuneDefaultDeployment`-Stand als `desiredDeployment` festgelegt,
+- versionierten BSSE Intune Snapshot-/Provenance-Contract als Entkopplung zur nativen IntuneCD-Struktur beschlossen,
+- CustomerNumber und Entra Tenant ID als stabile Zuordnungsidentitäten übernommen,
+- native IntuneCD-Dokumentation aus der Canonical Source-of-Truth ausgeschlossen,
+- IntuneCD Compare als provider-spezifische Evidence-/Vergleichshilfe eingeordnet,
+- `docs/INTUNECD_INTERFACE.md` als verbindlichen DocumentationEngine-Consumervertrag aufgenommen,
+- DE-WC-03.1 für spätere Intune-Adapter-/Fixture-Implementierung ergänzt,
+- veralteten GitHub-Arbeitsrepositorynamen auf `Vertax1337/00-Platform-DocumentationEngine` korrigiert.
 
 ### 2026-09-01 – Rendererunabhängiges Document View Model als kanonischer Dokumentvertrag beschlossen
 
