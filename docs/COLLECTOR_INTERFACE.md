@@ -1,7 +1,7 @@
 # DocumentationEngine – Collector-Schnittstelle und Verantwortungsgrenze
 
-Stand: 2026-08-13
-Status: **Logische Verantwortungsgrenze beschlossen; technischer Contract weiterhin offen**
+Stand: 2026-09-01
+Status: **Logische Verantwortungsgrenze beschlossen; providerunabhängiger Core-Contract beschlossen; technischer Provider-/Exchange-Contract weiterhin offen**
 
 ## 1. Zweck
 
@@ -82,6 +82,8 @@ Die DocumentationEngine ist verantwortlich für:
 
 Sie darf normalisierte Fakten strukturieren und deterministisch ableiten, aber nicht stillschweigend neue Infrastruktur-Fakten erzeugen.
 
+Der globale providerunabhängige Core-Contract ist in [`docs/architecture/CANONICAL_MODEL.md`](architecture/CANONICAL_MODEL.md) definiert.
+
 ---
 
 ## 5. AzureInfrastructureCollector – aktuell bekannte Eingangsdomänen
@@ -143,13 +145,15 @@ Diese Beziehungen eignen sich für deterministische Dokumentationsaussagen und D
 
 ### 6.1 Abhängigkeit zur P9 Relationship Engine
 
-**Status:** BESCHLOSSENE CONTRACT-GRENZE / P9 IM COLLECTOR NOCH OFFEN
+**Status:** BESCHLOSSENE CONTRACT-GRENZE / globaler Core spezifiziert / P9 IM COLLECTOR NOCH OFFEN
 
 P3, P4, P5 und P6 des `AzureInfrastructureCollector` verwenden derzeit teilweise fachmodulspezifische Relationship-Arrays. Diese Strukturen sind als aktuelle Faktenquelle und für die Anforderungsanalyse nutzbar, bilden aber noch nicht den finalen produktiven Azure→DocumentationEngine-Relationship-Contract.
 
 Die in P9 vorgesehene `Relationship Engine` vereinheitlicht die Azure-seitigen Relationships. Erst das stabilisierte und versionierte P9-Schema bildet die Grundlage für den produktiven Azure-Relationship-Contract und den Azure-Provider-Adapter.
 
 P9 definiert dabei ausschließlich den kanonischen Azure-seitigen Input. Das globale providerübergreifende Infrastructure-/Relationship-Modell, die Diagrammsemantik und die Anforderungen der DocumentationEngine werden zentral in der DocumentationEngine festgelegt.
+
+Dieser globale Core ist inzwischen mit `InfrastructureNode`, `Relationship`, `EvidenceReference` und `CoverageRecord` fachlich spezifiziert. Provider-Typen und Provider-Relationship-Typen bleiben dabei erhalten und werden kontrolliert auf kanonische Semantik abgebildet.
 
 Damit gilt:
 
@@ -158,12 +162,15 @@ fachmodulspezifische Azure-Relationships
         -> Collector P9 Relationship Engine
         -> kanonischer Azure-Relationship-Input
         -> Azure-Provider-Adapter
-        -> globales DocumentationEngine-Modell
+        -> Canonical Infrastructure Model
+        -> Semantic View Builder
 ```
 
 Die Spezifikation des globalen Engine-Modells ist kein P9-Blocker. Die produktive Finalisierung des Azure-Adapters ist dagegen von P9 abhängig.
 
 Die DocumentationEngine soll eine vorhandene Relationship nicht durch Namensheuristik ersetzen.
+
+Details zum globalen Modell: [`docs/architecture/CANONICAL_MODEL.md`](architecture/CANONICAL_MODEL.md).
 
 ---
 
@@ -181,11 +188,23 @@ zu bevorzugen.
 
 Friendly Names und Anzeigenamen dienen der Präsentation, nicht als alleinige Beziehungsgrundlage.
 
+Im Canonical Infrastructure Core werden aus stabilen Source Identities deterministische kanonische IDs gebildet. Die konkrete Stringkodierung bleibt technische Implementierungsentscheidung.
+
 ---
 
 ## 8. Umgang mit fehlenden Collector-Domänen
 
 Die DocumentationEngine muss Datenabdeckung explizit behandeln können.
+
+Der Canonical Core verwendet hierfür die Coverage-Zustände:
+
+```text
+collected
+partial
+notCollected
+notApplicable
+unavailable
+```
 
 Beispiel:
 
@@ -233,6 +252,8 @@ Nicht zulässig ohne weitere Datenbasis:
 
 Dies wäre eine nicht belegte betriebliche Annahme.
 
+Deterministisch abgeleitete Core-Relationships müssen ihre Quellfakten als Evidence referenzieren und als Ableitung gekennzeichnet sein. Namensähnlichkeit ist keine zulässige Ableitungsgrundlage.
+
 ---
 
 ## 10. Schnittstellen zu weiteren Collectoren
@@ -250,32 +271,44 @@ Jeder Collector bleibt für seine technische Erfassung und Normalisierung verant
 
 Die DocumentationEngine soll langfristig verschiedene normalisierte Quellen in gemeinsame Techniker- und Topologiesichten überführen können.
 
+Alle Provider-Adapter müssen denselben globalen Core-Contract bedienen; provider-spezifische Fakten werden nicht in den Renderer verschoben.
+
 ---
 
-## 11. Noch offener technischer Contract
+## 11. Verbleibender technischer Contract
 
-Vor Implementierung der Core Engine müssen mindestens festgelegt werden:
+Mit DE-WC-01 sind bereits fachlich festgelegt:
+
+- providerunabhängige Node-/Relationship-Anforderungen,
+- Evidence als First-Class-Provenance,
+- Coverage-Grundmodell,
+- No-Invention-/Fail-Closed-Grundsätze,
+- referentielle Integrität und deterministische Sortierung des Canonical Core.
+
+Vor produktiver Core-/Provider-Integration bleiben mindestens offen:
 
 - Paketstruktur,
-- Schema-Versionierung,
-- Collector-Typ/Provider-Kennung,
-- Pflichtmetadaten,
-- Snapshot-/Erfassungszeitpunkt,
-- IDs und Namespaces,
-- providerunabhängige Relationship-Anforderungen der DocumentationEngine,
+- konkrete technische Schema-/Serialisierungsform,
+- Schema-/Modellversionierung und Kompatibilitätsstrategie,
+- Collector-Typ/Provider-Kennung im physischen Exchange-Contract,
+- Pflichtmetadaten des Pakets,
+- Snapshot-/Erfassungszeitpunkt im Exchange-Contract,
+- konkrete ID-/Namespace-Kodierung,
 - nach P9: versioniertes kanonisches Azure-Relationship-Schema,
-- Mappingvertrag des Azure-Provider-Adapters auf das globale Engine-Modell,
-- Fehler-/Partial-Coverage-Modell,
+- Mappingvertrag des produktiven Azure-Provider-Adapters auf das globale Engine-Modell,
 - Schema-/Security-Validation-Verantwortung,
 - Kompatibilitätsregeln bei unterschiedlichen Collector-Versionen.
 
-Diese Punkte gehören in Phase 1 des kanonischen `IMPLEMENTATION_PLAN.md`.
+Diese Punkte gehören weiterhin in Phase 1 bzw. Phase 2 des kanonischen `IMPLEMENTATION_PLAN.md`.
 
 Für Azure ist die Reihenfolge verbindlich:
 
-1. providerunabhängigen Diagramm- und Relationship-Bedarf in der DocumentationEngine spezifizieren,
+1. providerunabhängigen Diagramm- und Relationship-Bedarf in der DocumentationEngine spezifizieren – **erfüllt durch DE-WC-01-Fachspezifikation**,
 2. P9 im `AzureInfrastructureCollector` vereinheitlichen und stabilisieren,
 3. P9-Schema als kanonischen Azure-seitigen Input prüfen und versionieren,
 4. produktiven Azure-Provider-Adapter und Azure→DocumentationEngine-Relationship-Contract finalisieren.
 
-Referenz: [`AzureInfrastructureCollector / Umsetzungsplan.md`](https://github.com/Vertax1337/AzureInfrastructureCollector/blob/main/Umsetzungsplan.md).
+Referenzen:
+
+- [`docs/architecture/CANONICAL_MODEL.md`](architecture/CANONICAL_MODEL.md)
+- [`AzureInfrastructureCollector / Umsetzungsplan.md`](https://github.com/Vertax1337/AzureInfrastructureCollector/blob/main/Umsetzungsplan.md)
