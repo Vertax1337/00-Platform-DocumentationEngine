@@ -131,13 +131,39 @@ Nur belegte Ressourcen und Relationships dürfen als technische Fakten erscheine
 
 Referenzarchitekturen und generative Bilder dürfen Stil-/Layoutreferenz sein, aber keine technische Source of Truth.
 
-### 1.8 Markdown-first / Diagramme
+### 1.8 Rendererunabhängiges Document View Model / Markdown-first
 
-- initiale Dokumentausgabe: Markdown,
-- PDF/DOCX später,
+Der fachliche Dokumentzustand wird in einem strukturierten **Document View Model (DVM)** gehalten.
+
+```text
+Semantic View Builder
+        |
+        v
+Document View Model
+        |
+        +--> Markdown Renderer
+        +--> DOCX Renderer
+        `--> PDF/HTML Renderer
+```
+
+Verbindlich gilt:
+
+- das DVM ist der kanonische Dokumentvertrag,
+- Markdown ist der erste produktive Renderer und nicht die Dokument-Source-of-Truth,
+- DOCX und PDF werden später aus demselben DVM gerendert,
+- eine dauerhafte Produktionsarchitektur `Markdown -> DOCX/PDF` ist nicht vorgesehen,
+- Sections, Tabellen, Figures und Callouts werden strukturiert modelliert und nicht als Markdown-Fragmente gespeichert,
+- Actual-/Desired-/Reconciliation-Perspektive bleibt im DVM erhalten,
+- DOCX-/PDF-Fähigkeit wird im DVM bereits berücksichtigt, ohne deren konkrete Renderer-Technologie vorzuziehen.
+
+Details: `architecture/DOCUMENT_VIEW_MODEL.md`.
+
+### 1.9 Diagramme
+
 - Azure-Diagramme mit offiziellen Microsoft Azure Architecture Icons,
 - deterministische Diagrammerzeugung,
-- semantische Zonen und Progressive Disclosure.
+- semantische Zonen und Progressive Disclosure,
+- Diagram View Model bleibt vom Document View Model getrennt; das DVM referenziert Diagrammartefakte als strukturierte Figures.
 
 ---
 
@@ -153,13 +179,17 @@ Referenzarchitekturen und generative Bilder dürfen Stil-/Layoutreferenz sein, a
 | Prototyp-Erkenntnis-/Fehlerdokument | implementiert |
 | Canonical-Infrastructure-Core-Fachspezifikation | implementiert |
 | Bicep/IaC-Desired-State-Fachspezifikation | implementiert |
+| Document-View-Model-Fachspezifikation | implementiert (`docs/architecture/DOCUMENT_VIEW_MODEL.md`) |
 | Actual-/Desired-Perspektivvertrag | fachlich dokumentiert |
 | Technische Core-Modell-/Validator-Implementierung | **noch nicht implementiert** |
+| Technische Document-View-Model-Implementierung | **noch nicht implementiert** |
 | Bicep Desired-State Adapter | **noch nicht implementiert** |
 | Azure Actual-State Adapter auf P9 | **noch nicht implementiert** |
 | Desired/Actual Reconciliation | **noch nicht implementiert** |
 | Semantic View Builder | **noch nicht implementiert** |
-| Produktiver Renderer | **noch nicht implementiert** |
+| Markdown Renderer | **noch nicht implementiert** |
+| DOCX Renderer | **noch nicht implementiert** |
+| PDF Renderer | **noch nicht implementiert** |
 | Produktiver End-to-End-Dokumentationsbuild | **noch nicht implementiert** |
 
 Wichtig: „Fachspezifikation implementiert“ bedeutet, dass der Contract im Repository verbindlich dokumentiert ist. Es bedeutet nicht, dass die fachliche Engine bereits technisch umgesetzt ist.
@@ -245,10 +275,10 @@ Die Engine erzeugt kundenspezifische Dokumentationsartefakte für `CUST-<Debitor
 
 ### 4.2 Core und interne Modelle
 
-- technische Repräsentation/Serialisierung,
+- technische Repräsentation/Serialisierung des Canonical Core,
 - Core Validator,
 - Semantic View Builder,
-- Document View Model,
+- technische Repräsentation/Serialisierung und Validierung des bereits fachlich beschlossenen Document View Models,
 - Diagram View Model,
 - Reconciliation Result Model,
 - Fehler-/Loggingmodell.
@@ -263,20 +293,25 @@ Die Engine erzeugt kundenspezifische Dokumentationsartefakte für `CUST-<Debitor
 ### 4.4 Rendering
 
 - Template Engine,
-- Markdown Renderer,
+- Markdown Renderer aus dem DVM,
+- DOCX Renderer aus dem DVM,
+- PDF-/HTML Renderer aus dem DVM,
 - Diagrammformat,
 - Layoutbibliothek,
-- SVG-/sonstiger Renderer,
+- SVG-/sonstiger Diagrammrenderer,
 - Icon-Katalog und Updateprozess,
-- Diagrammvalidierung.
+- Diagrammvalidierung,
+- Cross-Renderer-Contract-Tests für fachliche Parität.
 
 ### 4.5 Tests / Quality Gates
 
 - Unit-/Contract-Tests,
 - Bicep-Adapter-Tests,
 - Actual-/Desired-Perspektivtests,
+- DVM-Validierungs-/Golden-Master-Tests,
 - Reconciliation-Tests,
-- Golden-Master-/Snapshot-Tests,
+- Diagrammtests,
+- Cross-Renderer-Paritätstests für spätere DOCX/PDF-Renderer,
 - No-Invention-Regression,
 - E2E mit `CUST-00000`.
 
@@ -302,6 +337,18 @@ Weiterhin offen: Azure DevOps/Wiki, SharePoint, Teams oder kombinierte Publishin
 - Perspektivvertrag pro View,
 - keine View-/Rendererlogik im Core.
 
+### DE-WC-02.1 – Document View Model Contract
+
+**Fachlich beschlossen / technische Implementierung offen.**
+
+- rendererunabhängige Dokumentstruktur,
+- Sections/Paragraphs/Tables/Figures/Callouts als strukturierte Elemente,
+- Actual-/Desired-Perspektive erhalten,
+- DVM und Diagram View Model getrennt,
+- Markdown als erster Renderer,
+- DOCX/PDF als spätere Renderer desselben DVM,
+- keine kanonische `Markdown -> DOCX/PDF`-Kette.
+
 ### DE-WC-03 – Initiale Source-/Provider-Adapter
 
 - **Bicep Desired-State Adapter** als initialer produktnaher Adapter,
@@ -317,10 +364,15 @@ Weiterhin offen: Azure DevOps/Wiki, SharePoint, Teams oder kombinierte Publishin
 
 ---
 
-## 6. Mögliche spätere Erweiterungen
+## 6. Spätere Ausbaustufen
 
-- PDF,
-- DOCX,
+Geplant:
+
+- DOCX Renderer aus dem Document View Model,
+- PDF Renderer bzw. kontrollierter HTML/CSS->PDF-Pfad aus dem Document View Model.
+
+Weitere mögliche Erweiterungen:
+
 - Hyper-V/On-Premises,
 - Switch/Layer-2,
 - weitere Provider-/Iconsets,
