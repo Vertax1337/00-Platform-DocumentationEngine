@@ -44,7 +44,7 @@ Zielartefakte umfassen insbesondere:
 - Architekturdiagramme,
 - später Desired-vs-Actual-/Drift-Sichten.
 
-Initiales Dokumentausgabeformat ist Markdown.
+Der kanonische Dokumentvertrag ist ein rendererunabhängiges `Document View Model`. Markdown ist der erste produktive Renderer. DOCX und PDF folgen später als weitere Renderer desselben Document View Models.
 
 ---
 
@@ -111,7 +111,7 @@ Gemeinsame Komponenten werden erst bei tatsächlich belegter Wiederverwendung na
 
 **Status:** BESCHLOSSEN
 
-Markdown ist das initiale Dokumentationsoutputformat. PDF und DOCX folgen später.
+Markdown ist das erste produktive Dokumentausgabeformat bzw. der erste produktive Dokumentrenderer. Markdown ist nicht die kanonische Dokument-Source-of-Truth. PDF und DOCX folgen später als weitere Renderer desselben Document View Models.
 
 ### DE-DEC-008 – Offizielle Azure Architecture Icons
 
@@ -208,6 +208,36 @@ Bicep ersetzt den Collector nicht als Iststandsbeweis. Der Collector ersetzt Bic
 Actual und Desired werden nicht stillschweigend gemischt. Eine spätere Reconciliation erfolgt über einen expliziten Contract mit stabilen technischen Identitäten.
 
 Verbindliche Bicep-/IaC-Schnittstelle: [`docs/IAC_BICEP_INTERFACE.md`](IAC_BICEP_INTERFACE.md).
+
+### DE-DEC-017 – Rendererunabhängiges Document View Model als kanonischer Dokumentvertrag
+
+**Status:** BESCHLOSSEN / technische Implementierung offen
+
+Der fachliche Dokumentzustand der DocumentationEngine wird in einem strukturierten, rendererunabhängigen `Document View Model` (DVM) gehalten.
+
+Verbindlich gilt:
+
+```text
+Canonical Infrastructure Model
+        |
+        v
+Semantic View Builder
+        |
+        v
+Document View Model
+        |
+        +--> Markdown Renderer
+        +--> DOCX Renderer
+        `--> PDF/HTML Renderer
+```
+
+Markdown ist damit der erste produktive Renderer, aber nicht die Dokument-Source-of-Truth.
+
+DOCX und PDF werden später als weitere Renderer aus demselben DVM erzeugt. Eine dauerhafte kanonische Produktionsarchitektur `Markdown -> DOCX/PDF` ist nicht vorgesehen.
+
+Das DVM wird von Beginn an ausreichend strukturiert ausgelegt, um professionelle Dokumentelemente wie Sections, Tabellen, Figures, Callouts, Inhaltsverzeichnis-fähige Überschriften und formatneutrale Layout-Hinweise abzubilden. Renderer-spezifische Details wie OOXML-IDs, Markdown-Syntax oder PDF-Objekte gehören nicht in das DVM.
+
+Verbindliche Fachspezifikation: [`docs/architecture/DOCUMENT_VIEW_MODEL.md`](architecture/DOCUMENT_VIEW_MODEL.md).
 
 ---
 
@@ -358,13 +388,15 @@ Bereits beschlossen:
 - Coverage,
 - Graph-Perspektiven `actual`, `desiredTemplate`, `desiredDeployment`,
 - keine implizite Actual-/Desired-Mischung,
-- Trennung Core ↔ Semantic Views ↔ Renderer.
+- Trennung Core ↔ Semantic Views ↔ Renderer,
+- rendererunabhängiges Document View Model als kanonischer Dokumentvertrag,
+- Markdown/DOCX/PDF als getrennte Renderer desselben DVM.
 
 Weiter offen:
 
-- technische Repräsentation/Serialisierung,
+- technische Repräsentation/Serialisierung des Canonical Core,
 - Modellversionierung/Kompatibilität,
-- Document View Model,
+- technische Repräsentation/Serialisierung und Versionierung des Document View Models,
 - Diagram View Model,
 - Reconciliation View/Result Model,
 - konkrete Semantic-View-Implementierung.
@@ -379,7 +411,7 @@ Template-Konzept, Syntax, Versionierung, Conditional Sections, Wiederverwendung.
 
 **Status:** OFFEN
 
-Implementierung, Tabellenregeln, Encoding/Escaping, deterministische Sortierung, fehlende Werte.
+Implementierung aus dem Document View Model, Tabellenregeln, Encoding/Escaping, deterministische Sortierung, fehlende Werte.
 
 ### DE-OPEN-005 – Diagrammformat und Renderer
 
@@ -419,7 +451,7 @@ CLI/API, Argumente, Konfiguration, Exitcodes, Logging, Fehlerobjekte.
 
 **Status:** OFFEN
 
-Unit-, Contract-, Snapshot-/Golden-Master-, Diagramm-, Markdown-, No-Invention- und E2E-Tests.
+Unit-, Contract-, Snapshot-/Golden-Master-, Diagramm-, DVM-, Markdown-, Cross-Renderer-, No-Invention- und E2E-Tests.
 
 ### DE-OPEN-010 – Knowledge Base / Publishing
 
@@ -453,6 +485,7 @@ Azure DevOps/Wiki, SharePoint, Teams oder kombinierte Publishing-Lösung. Keine 
 - [x] P9-Contract-Grenze dokumentiert.
 - [x] providerunabhängigen Diagramm-/Relationship-Bedarf spezifiziert.
 - [x] Bicep/IaC als initiale Desired-State-Quelle architektonisch eingeplant.
+- [x] rendererunabhängiges Document View Model als kanonischen Dokumentvertrag fachlich beschlossen.
 - [ ] Bicep/IaC-Input-Paket fachlich/technisch finalisieren.
 - [ ] nach Collector-P9 vereinheitlichtes Azure-Relationship-Schema prüfen/versionieren.
 - [ ] produktiven Azure-Actual-State-Adapter finalisieren.
@@ -471,8 +504,9 @@ Azure DevOps/Wiki, SharePoint, Teams oder kombinierte Publishing-Lösung. Keine 
 
 - [x] providerunabhängiges Infrastructure-/Relationship-Core-Modell fachlich definiert.
 - [x] Graph-Perspektiven fachlich definiert.
+- [x] rendererunabhängigen Document-View-Model-Fachcontract definiert.
 - [ ] DE-WC-01 technisch implementieren.
-- [ ] Document View Model definieren.
+- [ ] Document View Model technisch repräsentieren und validieren.
 - [ ] Diagram View Model definieren.
 - [ ] Semantic View Builder definieren/implementieren.
 - [ ] Modellvalidierung implementieren.
@@ -522,6 +556,24 @@ Nicht Bestandteil:
 - Actual-/Desired-Kennzeichnung verpflichtend machen,
 - keine Präsentationsgruppen in den Canonical Core zurückschreiben.
 
+#### DE-WC-02.1 – Document View Model Contract
+
+**Status:** BESCHLOSSEN / TECHNISCHE IMPLEMENTIERUNG OFFEN
+
+Fachlicher Contract: [`docs/architecture/DOCUMENT_VIEW_MODEL.md`](architecture/DOCUMENT_VIEW_MODEL.md).
+
+Verbindlich:
+
+- DVM ist kanonischer Dokumentvertrag,
+- Sections/Paragraphs/Tables/Figures/Callouts werden strukturiert modelliert,
+- Actual-/Desired-/Reconciliation-Perspektive bleibt erhalten,
+- DVM und Diagram View Model bleiben getrennte Verträge,
+- Markdown ist erster Renderer,
+- DOCX/PDF sind spätere Renderer desselben DVM,
+- keine kanonische `Markdown -> DOCX/PDF`-Kette.
+
+**Technisches Gate:** DVM darf erst als `IMPLEMENTIERT` gelten, wenn technische Repräsentation/Versionierung, Validierung, deterministische Struktur, vollständiges Fixture sowie ein ausschließlich aus dem DVM rendernder Markdown-Renderer mit Golden-Master-/Contract-Tests vorhanden sind.
+
 #### DE-WC-03 – Initiale Source-/Provider-Adapter
 
 **Status:** GEPLANT
@@ -544,18 +596,21 @@ Bicep ist hierbei ausdrücklich kein späterer Optional-Workchunk mehr.
 - keine Name-only-Korrelation,
 - Reconciliation-Output als eigenes Modell/View, nicht als stillschweigend gemergter Canonical Graph.
 
-### Phase 3 – Markdown-Rendering
+### Phase 3 – Document Rendering: Markdown first
 
-**Ziel:** Erste produktive standardisierte Kundendokumentation.
+**Ziel:** Erste produktive standardisierte Kundendokumentation aus dem rendererunabhängigen Document View Model erzeugen.
 
+- [x] fachlichen Document-View-Model-Contract definiert.
+- [ ] technische DVM-Repräsentation/Validierung implementieren.
 - [ ] Template-Architektur auswählen.
-- [ ] Markdown-Renderer implementieren.
+- [ ] Markdown-Renderer ausschließlich aus dem DVM implementieren.
 - [x] technikerorientierte Dokumentstruktur definiert.
-- [ ] Tabellenstandard.
+- [ ] Tabellenstandard im DVM/Markdown-Renderer umsetzen.
 - [ ] optionale/fehlende Daten technisch behandeln.
 - [ ] Fakt/Ableitung/Coverage technisch kennzeichnen.
 - [ ] Perspektive `actual` vs. `desired` in Ausgaben sichtbar machen.
 - [ ] Golden-Master-Dokumente.
+- [ ] sicherstellen, dass kein Markdown-spezifisches Markup in den kanonischen DVM-Contract zurückfließt.
 
 ### Phase 4 – Diagrammstandard und Diagrammgenerierung
 
@@ -589,6 +644,7 @@ Bicep ist hierbei ausdrücklich kein späterer Optional-Workchunk mehr.
 - [ ] notwendige SharedModules integrieren.
 - [ ] Collector-Actual-State-Artefakte standardisieren.
 - [ ] IaC/Bicep-Desired-State-Artefakte standardisieren.
+- [ ] Document-View-Model-/Renderer-Artefakte standardisieren.
 - [ ] Build-Artefakte standardisieren.
 - [ ] Fehlercodes/Logs standardisieren.
 - [ ] Quality Gates aktivieren.
@@ -601,20 +657,27 @@ Bicep ist hierbei ausdrücklich kein späterer Optional-Workchunk mehr.
 - [ ] Schema-/Contract-Tests.
 - [ ] Bicep Adapter Contract Tests.
 - [ ] Actual/Desired Perspective Tests.
+- [ ] DVM Contract-/Validation Tests.
+- [ ] Markdown Golden-Master Tests.
 - [ ] Reconciliation Tests.
-- [ ] Golden-Master-/Snapshot-Tests.
 - [ ] Diagrammtests.
 - [ ] No-Invention-Tests.
 - [ ] E2E mit `CUST-00000` einschließlich mindestens eines IaC-verwalteten Workloads.
 - [ ] erster realer Pilotkunde.
 
-### Phase 7 – Spätere Ausgabeformate
+### Phase 7 – Weitere Document Renderer
 
-**Status:** SPÄTER
+**Status:** SPÄTER / ARCHITEKTURRAHMEN BESCHLOSSEN
 
-- [ ] PDF.
-- [ ] DOCX.
-- [ ] Export-/Rendering-Stack auswählen.
+DOCX und PDF werden nicht aus einem separat gepflegten Dokumentzustand erzeugt, sondern als weitere Renderer aus demselben Document View Model.
+
+- [ ] DOCX-Renderer-Technologie auswählen.
+- [ ] DOCX Renderer aus dem DVM implementieren.
+- [ ] PDF-Renderer bzw. kontrollierten HTML/CSS->PDF-Pfad auswählen.
+- [ ] PDF Renderer aus dem DVM implementieren.
+- [ ] fachliche Cross-Renderer-Parität Markdown/DOCX/PDF testen.
+
+Ein Prototyp darf Markdown als temporäres Zwischenformat verwenden; dies ist kein kanonischer Produktionsvertrag.
 
 ### Phase 8 – Weitere Datenquellen und Publishing
 
@@ -638,7 +701,8 @@ Die erste produktive Version gilt erst dann als abgeschlossen, wenn mindestens:
 - mindestens ein produktnaher Bicep Desired-State Adapter,
 - Azure Actual-State Adapter auf stabilisiertem P9-Contract,
 - Semantic View Builder,
-- standardisierte technikerorientierte Markdown-Ausgabe,
+- versioniertes/validiertes rendererunabhängiges Document View Model,
+- standardisierte technikerorientierte Markdown-Ausgabe, die ausschließlich aus dem DVM gerendert wird,
 - initial erforderliche Infrastruktur-/Netzwerkdiagramme,
 - mindestens eine Bicep-basierte Desired-State-Architektursicht,
 - verbindlicher Diagramm-/Iconstandard,
@@ -649,7 +713,7 @@ Die erste produktive Version gilt erst dann als abgeschlossen, wenn mindestens:
 - reproduzierbarer Build,
 - erfolgreicher E2E-Test mit `CUST-00000`.
 
-Eine vollständige Property-Level-Drift-Engine, PDF, DOCX und finale Knowledge-Base-/Publishing-Lösung sind keine Voraussetzung der ersten produktiven Version.
+Eine vollständige Property-Level-Drift-Engine, produktive DOCX-/PDF-Renderer und finale Knowledge-Base-/Publishing-Lösung sind keine Voraussetzung der ersten produktiven Version. Ihre spätere Ableitung aus demselben DVM ist jedoch architektonisch bereits festgelegt.
 
 ---
 
@@ -663,7 +727,7 @@ Eine vollständige Property-Level-Drift-Engine, PDF, DOCX und finale Knowledge-B
 | DE-DEC-004 | Validation | BESCHLOSSEN | Fail Closed |
 | DE-DEC-005 | Pipeline | BESCHLOSSEN | zentrale `PipelineTemplates` |
 | DE-DEC-006 | Shared Code | BESCHLOSSEN | `SharedModules` bei echter Wiederverwendung |
-| DE-DEC-007 | Initialer Output | BESCHLOSSEN | Markdown |
+| DE-DEC-007 | Initialer Output | BESCHLOSSEN | Markdown als erster Renderer, nicht als Dokument-Source-of-Truth |
 | DE-DEC-008 | Azure Icons | BESCHLOSSEN | offizielle Microsoft Azure Architecture Icons |
 | DE-DEC-009 | Qualität | BESCHLOSSEN | reproduzierbare Builds + Tests |
 | DE-DEC-010 | Faktentreue | BESCHLOSSEN | nur belegte Ressourcen/Relationships |
@@ -673,10 +737,11 @@ Eine vollständige Property-Level-Drift-Engine, PDF, DOCX und finale Knowledge-B
 | DE-DEC-014 | Azure Relationship Contract | BESCHLOSSEN | produktiver Actual-State-Adapter erst nach P9 |
 | DE-DEC-015 | Canonical Infrastructure Core | BESCHLOSSEN | Nodes, Relationships, Evidence, Coverage + Graph-Perspektive |
 | DE-DEC-016 | Bicep Desired State | BESCHLOSSEN | Bicep/IaC von Anfang an First-Class-Desired-State-Quelle |
+| DE-DEC-017 | Document View Model | BESCHLOSSEN | rendererunabhängiges DVM ist kanonischer Dokumentvertrag; Markdown/DOCX/PDF sind Renderer |
 | DE-OPEN-001 | Input-Contract | OFFEN | – |
-| DE-OPEN-002 | Internes Modell Rest | TEILWEISE OFFEN | technische Repräsentation, View-/Reconciliation-Modelle offen |
+| DE-OPEN-002 | Internes Modell Rest | TEILWEISE OFFEN | technische Repräsentation/Versionierung von Core/DVM, Diagram-/Reconciliation-Modelle offen |
 | DE-OPEN-003 | Template Engine | OFFEN | – |
-| DE-OPEN-004 | Markdown Renderer | OFFEN | – |
+| DE-OPEN-004 | Markdown Renderer | OFFEN | aus DVM |
 | DE-OPEN-005 | Diagrammformat/Renderer | OFFEN | – |
 | DE-OPEN-006 | Renderer-spezifischer Layoutstandard | OFFEN | fachlicher Standard vorhanden |
 | DE-OPEN-007 | Diagrammvalidierung | OFFEN | – |
@@ -687,6 +752,17 @@ Eine vollständige Property-Level-Drift-Engine, PDF, DOCX und finale Knowledge-B
 ---
 
 ## 9. Änderungsprotokoll
+
+### 2026-09-01 – Rendererunabhängiges Document View Model als kanonischer Dokumentvertrag beschlossen
+
+- Markdown-first präzisiert: Markdown ist der erste produktive Renderer, nicht die Dokument-Source-of-Truth,
+- `Document View Model` als kanonischen, rendererunabhängigen Dokumentvertrag beschlossen,
+- DOCX und PDF als spätere Renderer desselben DVM eingeordnet,
+- dauerhafte Produktionskette `Markdown -> DOCX/PDF` ausgeschlossen,
+- Sections, Tabellen, Figures und Callouts als strukturierte DVM-Elemente vorgesehen,
+- DOCX-/PDF-Fähigkeit bereits im DVM-Design berücksichtigt, ohne Renderer-Technologie vorzuziehen,
+- `docs/architecture/DOCUMENT_VIEW_MODEL.md` als verbindliche Fachspezifikation aufgenommen,
+- DE-WC-02.1 und die Renderer-/Testreihenfolge entsprechend ergänzt.
 
 ### 2026-09-01 – Bicep/IaC als initiale Desired-State-Quelle eingeplant
 

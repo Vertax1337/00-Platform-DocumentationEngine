@@ -1,7 +1,7 @@
 # DocumentationEngine – Techniker-Dokumentationsstandard
 
 Stand: 2026-09-01
-Status: **Konsolidierter Zielstandard aus Prototypen; Actual-/Desired-Perspektivregel ergänzt; konkrete Template-Technologie offen**
+Status: **Konsolidierter Zielstandard; rendererunabhängiges Document View Model beschlossen; Actual-/Desired-Perspektivregel festgelegt; konkrete Renderer-Technologien offen**
 
 ## 1. Zielgruppe
 
@@ -322,13 +322,31 @@ Nicht erlaubt:
 
 Bereits beschlossen:
 
-- Markdown-first,
-- Actual-/Desired-Perspektive muss im Output nachvollziehbar bleiben.
+- das **rendererunabhängige Document View Model (DVM)** ist der kanonische Dokumentvertrag,
+- Markdown ist der **erste produktive Renderer** und nicht die Dokument-Source-of-Truth,
+- DOCX und PDF werden später als weitere Renderer desselben DVM umgesetzt,
+- Actual-/Desired-/Reconciliation-Perspektive muss im DVM und in jedem Ausgabeformat nachvollziehbar bleiben,
+- fachliche Dokumentelemente wie Sections, Tabellen und Figures werden strukturiert modelliert und nicht als vorgerenderte Markdown-Fragmente gespeichert.
+
+Zielpfad:
+
+```text
+Semantic View Builder
+        |
+        v
+Document View Model
+        |
+        +--> Markdown Renderer
+        +--> DOCX Renderer
+        `--> PDF/HTML Renderer
+```
+
+Eine dauerhafte Architektur `Markdown -> DOCX/PDF` ist nicht vorgesehen. Ein früher technischer Prototyp darf Markdown als Zwischenformat verwenden, begründet aber keinen kanonischen Produktionsvertrag.
 
 Später vorgesehen:
 
-- DOCX,
-- PDF,
+- DOCX-Renderer,
+- PDF-Renderer bzw. kontrollierter HTML/CSS->PDF-Pfad,
 - ggf. weitere Publishing-Ziele nach separater Architekturentscheidung.
 
-Die fachliche Dokumentstruktur soll unabhängig vom finalen Ausgabeformat bleiben. Dafür ist langfristig ein internes Document View Model vorgesehen; dessen konkrete technische Ausgestaltung ist noch offen.
+Die fachliche DVM-Spezifikation ist in `architecture/DOCUMENT_VIEW_MODEL.md` festgelegt. Die konkrete technische Repräsentation sowie die Renderer-Technologien bleiben noch offen.
