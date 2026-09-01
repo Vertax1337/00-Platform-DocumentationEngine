@@ -1,8 +1,8 @@
 # DocumentationEngine
 
-Zentrale Engine zur Generierung standardisierter technischer Kundendokumentationen aus normalisierten Collector-Daten.
+Zentrale Engine zur Generierung standardisierter technischer Kundendokumentationen aus validierten Collector- und IaC-Daten.
 
-> **Projektstatus:** Initialisierung / Architekturrahmen konsolidiert. Der providerunabhängige Canonical Infrastructure Core ist fachlich beschlossen; die eigentliche fachliche Engine ist noch nicht implementiert.
+> **Projektstatus:** Initialisierung / Architekturrahmen konsolidiert. Der providerunabhängige Canonical Infrastructure Core ist fachlich beschlossen; Bicep/IaC ist als initiale Desired-State-Quelle eingeplant; die eigentliche fachliche Engine ist noch nicht implementiert.
 >
 > **Logische Einordnung im Gesamtprojekt:** `00-Platform / DocumentationEngine`
 >
@@ -10,32 +10,67 @@ Zentrale Engine zur Generierung standardisierter technischer Kundendokumentation
 
 ## Zweck
 
-Die `DocumentationEngine` verarbeitet normalisierte und validierte Daten aus zentralen Collector-Repositories und erzeugt daraus reproduzierbare technische Dokumentationsartefakte. Dazu gehören insbesondere:
+Die `DocumentationEngine` verarbeitet normalisierte und validierte technische Quellen und erzeugt daraus reproduzierbare technische Dokumentationsartefakte. Dazu gehören insbesondere:
 
 - strukturierte technische Texte,
 - Tabellen,
 - Infrastrukturübersichten,
 - Netzwerkdiagramme,
-- Architekturdiagramme.
+- Architekturdiagramme,
+- später Desired-vs-Actual-/Drift-Sichten.
 
-Initiales Ausgabeformat ist **Markdown**. **PDF** und **DOCX** sind als spätere Erweiterungen vorgesehen.
+Initiales Dokumentausgabeformat ist **Markdown**. **PDF** und **DOCX** sind spätere Erweiterungen.
+
+## Zwei technische Perspektiven
+
+Die Engine unterscheidet von Beginn an zwischen tatsächlichem Iststand und versioniertem IaC-Sollstand:
+
+```text
+Actual State
+  AzureInfrastructureCollector / weitere Collector
+        |
+        v
+Actual-State Adapter
+        |
+        v
+Canonical Graph [actual]
+
+Desired State
+  Bicep / IaC
+        |
+        v
+Bicep Desired-State Adapter
+        |
+        v
+Canonical Graph [desiredTemplate|desiredDeployment]
+```
+
+Bicep ersetzt den Collector nicht als Iststandsbeweis. Der Collector ersetzt Bicep nicht als IaC-Source-of-Truth.
+
+Actual und Desired werden nicht stillschweigend zusammengeführt. Ein späterer Abgleich erfolgt über einen expliziten Reconciliation-Contract.
 
 ## Rolle in der Gesamtarchitektur
 
 ```text
-Read-only Quelle
+Collector-/IaC-Quelle
        |
        v
-    Collector
+Normalisierung / Build-Artefakt
        |
        v
-Normalisierung
+Schema-/Security-/Contract-Validation
        |
        v
-Schema-/Security-Validation
+Source / Provider Adapter
        |
        v
-DocumentationEngine
+Canonical Infrastructure Model
+       |
+       v
+Semantic View Builder
+       |
+       v
+DocumentationEngine Renderer
        |
        v
 Dokumentationsartefakte
@@ -46,55 +81,57 @@ CUST-<Debitor>-<Name>
 
 Die `DocumentationEngine` ist zentrale Plattformlogik. Sie gehört nicht in einzelne Collector-Repositories und nicht in kundenspezifische `CUST-*`-Projekte.
 
-Collector sind für Erfassung, Parsing und Normalisierung herstellerspezifischer Daten zuständig. Die `DocumentationEngine` übernimmt die herstellerübergreifende Verarbeitung in standardisierte Dokumentation und Visualisierungen.
+**Verbindliche Trennlinie Actual State:** Die DocumentationEngine inventarisiert Azure nicht selbst erneut. Für Azure konsumiert sie freigegebene, normalisierte Collector-Artefakte. Details: [`docs/COLLECTOR_INTERFACE.md`](docs/COLLECTOR_INTERFACE.md).
 
-**Verbindliche Trennlinie:** Die DocumentationEngine soll Azure nicht selbst erneut inventarisieren. Für Azure konsumiert sie freigegebene, normalisierte Collector-Artefakte. Details: [`docs/COLLECTOR_INTERFACE.md`](docs/COLLECTOR_INTERFACE.md).
+**Verbindliche Trennlinie Desired State:** Für IaC-verwaltete Workloads wird Bicep von Beginn an als First-Class-Desired-State-Quelle eingeplant. Details: [`docs/IAC_BICEP_INTERFACE.md`](docs/IAC_BICEP_INTERFACE.md).
 
 ## Bereits beschlossene Randbedingungen
 
 - Zentrale Einordnung unter `00-Platform`.
-- Provisionierung des Repositories erfolgt über den bestehenden DEVOPS-/Platform-Bootstrap.
-- Normalisierte Collector-Daten bilden den Input der Engine.
-- Vorgelagerte Schema-, Sicherheits- und Quality-Gates arbeiten nach dem Fail-Closed-Prinzip.
+- Provisionierung über den bestehenden DEVOPS-/Platform-Bootstrap.
+- Collector liefern den belegten Actual State.
+- Bicep/IaC liefert den versionierten Desired State für IaC-verwaltete Workloads.
+- Actual und Desired tragen eine explizite Graph-Perspektive.
+- Vorgelagerte Schema-, Sicherheits-, Contract- und Quality-Gates arbeiten fail-closed.
 - Zentrale Pipeline-Integration erfolgt über `PipelineTemplates`.
-- Wiederverwendbare gemeinsame technische Komponenten sollen bei Bedarf aus `SharedModules` genutzt werden.
+- Gemeinsame technische Komponenten werden erst bei belegter Wiederverwendung nach `SharedModules` ausgelagert.
 - Initialer Dokumentationsoutput ist Markdown.
-- PDF- und DOCX-Ausgabe folgen später.
-- Azure-Diagramme sollen offizielle **Microsoft Azure Architecture Icons** verwenden.
+- PDF und DOCX folgen später.
+- Azure-Diagramme verwenden offizielle Microsoft Azure Architecture Icons.
 - Offizielle Hersteller-Icons dürfen nicht willkürlich verzerrt, gespiegelt, gedreht oder umgefärbt werden.
 - Dokumentationsbuilds müssen reproduzierbar und automatisiert testbar werden.
 - Fehlende Infrastruktur-Fakten dürfen nicht durch typische Referenzarchitekturen ergänzt werden.
 - Generative Bildausgaben dürfen Stil-/Mockup-Zwecken dienen, aber nicht die technische Source of Truth eines Kundendiagramms bilden.
-- Der providerunabhängige Canonical Infrastructure Core besteht aus `InfrastructureNode`, `Relationship`, `EvidenceReference` und `CoverageRecord`.
-- Jeder kanonische Node und jede kanonische Relationship benötigt Evidence; Namensheuristiken und Referenzarchitektur-Annahmen sind kein Faktenersatz.
+- Der Canonical Infrastructure Core besteht aus `InfrastructureNode`, `Relationship`, `EvidenceReference` und `CoverageRecord` plus Graph-Envelope/Perspektive.
+- Jeder kanonische Node und jede kanonische Relationship benötigt Evidence.
 - Renderer-/Layoutattribute gehören nicht in den Canonical Infrastructure Core.
+- Desired-vs-Actual-Korrelation darf nicht allein über Namen erfolgen.
 
 ## Konsolidierter Prototypstand
 
-Aus den ersten mit realen Azure-Collector-Daten erzeugten Dokumentations- und Diagrammprototypen wurden zusätzliche Arbeitsstandards abgeleitet:
+Aus den ersten realen Azure-Collector-Prototypen wurden folgende Arbeitsstandards abgeleitet:
 
-- **Technikerorientierung vor Inventar:** Einstieg über Architektur, Workloads und Betriebszusammenhänge; vollständige Ressourcenlisten nachgelagert.
-- **Semantic View Builder:** Zwischen Collector-Daten und Renderer wird eine semantische Sicht benötigt; direkte JSON-zu-Diagramm-Abbildung reicht nicht aus.
-- **Progressive Disclosure:** High-Level-Übersicht und fokussierte Detailviews statt eines überladenen Gesamtbilds.
-- **Semantische Layoutzonen:** Positionen sollen Bedeutung transportieren; freies Graph-Autolayout ist für die High-Level-Technikersicht nicht ausreichend.
-- **Fünf Standard-Views als Prototyprahmen:** Gesamtübersicht, Netzwerk & Connectivity, Workload & Deployment, Backup & Recovery, Security & Operations.
-- **Backup aus Sicht der geschützten Ressource:** primäre Frage ist „Was ist geschützt und wodurch?“.
-- **Coverage statt Erfindung:** Noch nicht erhobene Security-/Operations-Domänen werden als nicht erhoben gekennzeichnet und nicht mit typischen Azure-Diensten aufgefüllt.
+- **Technikerorientierung vor Inventar**.
+- **Semantic View Builder** zwischen technischen Inputs und Renderer.
+- **Progressive Disclosure** statt überladenem Gesamtbild.
+- **Semantische Layoutzonen** statt freiem Graph-Autolayout.
+- **Fünf Standard-Views:** Gesamtübersicht, Netzwerk & Connectivity, Workload & Deployment, Backup & Recovery, Security & Operations.
+- **Backup aus Sicht der geschützten Ressource**.
+- **Coverage statt Erfindung** bei nicht erhobenen Domänen.
 
-Diese Erkenntnisse legen **noch keine konkrete Rendertechnologie** fest.
+Diese Erkenntnisse legen noch keine konkrete Rendertechnologie fest.
 
 ## Aktueller Core-Contract
 
-Zwischen Provider-Adaptern und Semantic View Builder ist jetzt folgender fachlicher Kern beschlossen:
-
 ```text
-Provider-/Collector-Artefakte
+Collector / Bicep / weitere Quellen
         |
         v
-Provider Adapter
+Source / Provider Adapter
         |
         v
 Canonical Infrastructure Model
+  |- Graph Perspective
   |- InfrastructureNode
   |- Relationship
   |- EvidenceReference
@@ -110,52 +147,74 @@ Document / Diagram View Models
 Renderer
 ```
 
-Details und das harte DE-WC-01-Gate: [`docs/architecture/CANONICAL_MODEL.md`](docs/architecture/CANONICAL_MODEL.md).
+Details und DE-WC-01-Gate: [`docs/architecture/CANONICAL_MODEL.md`](docs/architecture/CANONICAL_MODEL.md).
 
-Für Azure bleibt der produktive Provider-Adapter weiterhin vom stabilisierten P9-Relationship-Schema des `AzureInfrastructureCollector` abhängig. Das globale Core-Modell selbst ist kein P9-Blocker.
+Für Azure bleibt nur der **produktive Actual-State-Adapter** vom stabilisierten P9-Relationship-Schema des `AzureInfrastructureCollector` abhängig. Der Bicep Desired-State Adapter ist kein P9-Blocker.
+
+## Bicep / IaC
+
+Bicep wird ausdrücklich nicht erst später „dazugeklebt“.
+
+Geplanter Mindestpfad:
+
+```text
+versioniertes main.bicep / Module
+        |
+        +--> immutable Git-/Build-Provenance
+        +--> deterministische Compiler-/Artefakt-Provenance
+        +--> sanitizter Deploymentkontext, falls benötigt
+        |
+        v
+Bicep Desired-State Adapter
+        |
+        v
+Canonical Graph [desiredTemplate|desiredDeployment]
+```
+
+Secret-Werte dürfen nicht in Canonical Graph, Evidence, Logs oder Dokumentartefakte übernommen werden.
 
 ## Noch ausdrücklich offen
 
-Zu folgenden Punkten ist noch **keine finale Technologie- oder Architekturentscheidung** getroffen worden:
-
-- konkreter Input-Contract und physische Paket-/Dateistruktur,
+- konkreter gemeinsamer Input-Contract und physische Paketstruktur,
 - technische Repräsentation/Serialisierung und Versionierung des Canonical Core,
+- konkrete technische Bicep-Parserstrategie,
 - internes Document View Model,
 - internes Diagram View Model,
+- Reconciliation-/Diff-Result-Model,
 - Template Engine,
 - konkrete Renderer-Technologie,
 - konkretes Diagrammformat,
-- konkretes Layoutverfahren / Layoutbibliothek,
+- Layoutverfahren/Layoutbibliothek,
 - CLI/API der Engine,
 - konkrete Pipeline-Parameter und Artefaktübergabe,
-- konkrete Abgrenzung eigener Validierungen gegenüber `SecurityValidation`,
-- konkrete Nutzung bzw. Auslagerung in `SharedModules`,
+- Abgrenzung eigener Validierungen gegenüber `SecurityValidation`,
+- konkrete SharedModules-Nutzung,
 - PDF-/DOCX-Exportwerkzeuge,
 - Knowledge-Base-/Publishing-Technologie.
-
-Diese Punkte werden erst nach Konsolidierung der bestehenden Schnittstellen bewertet und anschließend als explizite Architekturentscheidungen dokumentiert.
 
 ## Angrenzende Repositories / Systeme
 
 | Bereich | Beziehung zur DocumentationEngine |
 |---|---|
 | `DEVOPS / PlatformBootstrap` | Provisioniert zentrale Plattform- und Kundenrepositories. |
-| `PipelineTemplates` | Zukünftige zentrale Pipeline-Orchestrierung und standardisierter Aufruf der Engine. |
-| `SecurityValidation` | Vorgelagerte Sicherheits- und Validierungsgrenze; genaue Verantwortungsabgrenzung noch offen. |
-| `SharedModules` | Quelle für künftig gemeinsam nutzbare technische Komponenten. |
-| `AzureInfrastructureCollector` | Liefert normalisierte Azure-Infrastrukturdaten; Azure wird durch die DocumentationEngine nicht erneut inventarisiert. |
-| `OPNsenseDocumentation` | Liefert nach RAW/Sanitize/Validate/Normalize einen normalisierten Netzwerk-/Firewall-Datenstand. |
-| `CUST-*` | Kundenspezifischer Consumer bzw. Zielort generierter Dokumentationsartefakte. |
+| `PipelineTemplates` | Zukünftige zentrale Orchestrierung für Collector- und IaC-Artefakte. |
+| `SecurityValidation` | Vorgelagerte Sicherheits- und Validierungsgrenze. |
+| `SharedModules` | Quelle für tatsächlich gemeinsam genutzte technische Komponenten. |
+| `AzureInfrastructureCollector` | Liefert normalisierten Azure-Actual-State; Azure wird nicht erneut inventarisiert. |
+| IaC-/Bicep-Repositories | Liefern versionierten Desired State für IaC-verwaltete Workloads. |
+| `OPNsenseDocumentation` | Liefert normalisierten Netzwerk-/Firewall-Datenstand. |
+| `CUST-*` | Kundenspezifischer Consumer/Zielort generierter Dokumentationsartefakte. |
 
 ## Dokumentation dieses Repositories
 
-- [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) – konsolidierter aktueller Projektstand.
-- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) – kanonischer technischer Umsetzungsplan dieses Unterprojekts.
-- [`docs/COLLECTOR_INTERFACE.md`](docs/COLLECTOR_INTERFACE.md) – Verantwortungsgrenze und bekannte Collector-Schnittstelle.
-- [`docs/architecture/CANONICAL_MODEL.md`](docs/architecture/CANONICAL_MODEL.md) – providerunabhängiger Core-Contract für Nodes, Relationships, Evidence und Coverage sowie DE-WC-01-Gate.
-- [`docs/TECHNICIAN_DOCUMENTATION_STANDARD.md`](docs/TECHNICIAN_DOCUMENTATION_STANDARD.md) – Zielstruktur für technikerorientierte Kundendokumentation.
-- [`docs/DIAGRAM_ENGINE_STANDARD.md`](docs/DIAGRAM_ENGINE_STANDARD.md) – konsolidierte Diagrammregeln, Microsoft-Referenzen und fünf Standard-Views.
-- [`docs/PROTOTYPE_FINDINGS.md`](docs/PROTOTYPE_FINDINGS.md) – positive und negative Erkenntnisse aus den bisherigen Prototypen.
+- [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) – konsolidierter Projektstand.
+- [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) – kanonischer technischer Umsetzungsplan.
+- [`docs/COLLECTOR_INTERFACE.md`](docs/COLLECTOR_INTERFACE.md) – Actual-State-Collector-Grenze.
+- [`docs/IAC_BICEP_INTERFACE.md`](docs/IAC_BICEP_INTERFACE.md) – Bicep/IaC-Desired-State-Grenze.
+- [`docs/architecture/CANONICAL_MODEL.md`](docs/architecture/CANONICAL_MODEL.md) – providerunabhängiger perspektivfähiger Core-Contract.
+- [`docs/TECHNICIAN_DOCUMENTATION_STANDARD.md`](docs/TECHNICIAN_DOCUMENTATION_STANDARD.md) – technikerorientierter Dokumentationsstandard.
+- [`docs/DIAGRAM_ENGINE_STANDARD.md`](docs/DIAGRAM_ENGINE_STANDARD.md) – Diagrammstandard und fünf Standard-Views.
+- [`docs/PROTOTYPE_FINDINGS.md`](docs/PROTOTYPE_FINDINGS.md) – Prototyperkenntnisse und Fehlerregressionen.
 
 ## Externe Referenzen für Diagramme
 
@@ -168,6 +227,4 @@ Microsofts Referenzarchitekturen dienen als Kommunikations-/Layoutreferenzen und
 
 ## Arbeitsprinzip
 
-Der Umsetzungsplan ist künftig der **kanonische technische Stand** der `DocumentationEngine`. Neue Architekturentscheidungen, technische Standards, offene Punkte, Implementierungsschritte und erreichte Umsetzungsstände werden dort fortlaufend gepflegt.
-
-Bereits gelöste Grundsatzfragen aus dem Gesamtprojekt werden nicht neu geöffnet, sofern keine ausdrückliche Neubewertung angefordert wird.
+Der Umsetzungsplan ist der kanonische technische Stand der `DocumentationEngine`. Bereits gelöste Grundsatzfragen werden nicht neu geöffnet, sofern keine ausdrückliche Neubewertung angefordert wird.
