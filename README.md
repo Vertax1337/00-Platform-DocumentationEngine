@@ -2,7 +2,7 @@
 
 Zentrale Engine zur Generierung standardisierter technischer Kundendokumentationen aus normalisierten Collector-Daten.
 
-> **Projektstatus:** Initialisierung / Architekturrahmen konsolidiert. Die eigentliche fachliche Engine ist noch nicht implementiert.
+> **Projektstatus:** Initialisierung / Architekturrahmen konsolidiert. Der providerunabhängige Canonical Infrastructure Core ist fachlich beschlossen; die eigentliche fachliche Engine ist noch nicht implementiert.
 >
 > **Logische Einordnung im Gesamtprojekt:** `00-Platform / DocumentationEngine`
 >
@@ -65,6 +65,9 @@ Collector sind für Erfassung, Parsing und Normalisierung herstellerspezifischer
 - Dokumentationsbuilds müssen reproduzierbar und automatisiert testbar werden.
 - Fehlende Infrastruktur-Fakten dürfen nicht durch typische Referenzarchitekturen ergänzt werden.
 - Generative Bildausgaben dürfen Stil-/Mockup-Zwecken dienen, aber nicht die technische Source of Truth eines Kundendiagramms bilden.
+- Der providerunabhängige Canonical Infrastructure Core besteht aus `InfrastructureNode`, `Relationship`, `EvidenceReference` und `CoverageRecord`.
+- Jeder kanonische Node und jede kanonische Relationship benötigt Evidence; Namensheuristiken und Referenzarchitektur-Annahmen sind kein Faktenersatz.
+- Renderer-/Layoutattribute gehören nicht in den Canonical Infrastructure Core.
 
 ## Konsolidierter Prototypstand
 
@@ -80,12 +83,45 @@ Aus den ersten mit realen Azure-Collector-Daten erzeugten Dokumentations- und Di
 
 Diese Erkenntnisse legen **noch keine konkrete Rendertechnologie** fest.
 
+## Aktueller Core-Contract
+
+Zwischen Provider-Adaptern und Semantic View Builder ist jetzt folgender fachlicher Kern beschlossen:
+
+```text
+Provider-/Collector-Artefakte
+        |
+        v
+Provider Adapter
+        |
+        v
+Canonical Infrastructure Model
+  |- InfrastructureNode
+  |- Relationship
+  |- EvidenceReference
+  `- CoverageRecord
+        |
+        v
+Semantic View Builder
+        |
+        v
+Document / Diagram View Models
+        |
+        v
+Renderer
+```
+
+Details und das harte DE-WC-01-Gate: [`docs/architecture/CANONICAL_MODEL.md`](docs/architecture/CANONICAL_MODEL.md).
+
+Für Azure bleibt der produktive Provider-Adapter weiterhin vom stabilisierten P9-Relationship-Schema des `AzureInfrastructureCollector` abhängig. Das globale Core-Modell selbst ist kein P9-Blocker.
+
 ## Noch ausdrücklich offen
 
 Zu folgenden Punkten ist noch **keine finale Technologie- oder Architekturentscheidung** getroffen worden:
 
 - konkreter Input-Contract und physische Paket-/Dateistruktur,
-- internes Dokument-, Infrastruktur- und Netzwerkmodell,
+- technische Repräsentation/Serialisierung und Versionierung des Canonical Core,
+- internes Document View Model,
+- internes Diagram View Model,
 - Template Engine,
 - konkrete Renderer-Technologie,
 - konkretes Diagrammformat,
@@ -116,6 +152,7 @@ Diese Punkte werden erst nach Konsolidierung der bestehenden Schnittstellen bewe
 - [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md) – konsolidierter aktueller Projektstand.
 - [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) – kanonischer technischer Umsetzungsplan dieses Unterprojekts.
 - [`docs/COLLECTOR_INTERFACE.md`](docs/COLLECTOR_INTERFACE.md) – Verantwortungsgrenze und bekannte Collector-Schnittstelle.
+- [`docs/architecture/CANONICAL_MODEL.md`](docs/architecture/CANONICAL_MODEL.md) – providerunabhängiger Core-Contract für Nodes, Relationships, Evidence und Coverage sowie DE-WC-01-Gate.
 - [`docs/TECHNICIAN_DOCUMENTATION_STANDARD.md`](docs/TECHNICIAN_DOCUMENTATION_STANDARD.md) – Zielstruktur für technikerorientierte Kundendokumentation.
 - [`docs/DIAGRAM_ENGINE_STANDARD.md`](docs/DIAGRAM_ENGINE_STANDARD.md) – konsolidierte Diagrammregeln, Microsoft-Referenzen und fünf Standard-Views.
 - [`docs/PROTOTYPE_FINDINGS.md`](docs/PROTOTYPE_FINDINGS.md) – positive und negative Erkenntnisse aus den bisherigen Prototypen.
